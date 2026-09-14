@@ -1,53 +1,97 @@
-let deacons = JSON.parse(localStorage.getItem('deacons')) || [];
-let pendingRequests = JSON.parse(localStorage.getItem('pendingRequests')) || [];
-let attendanceRecords = JSON.parse(localStorage.getItem('attendanceRecords')) || [];
-let followUpRecords = JSON.parse(localStorage.getItem('followUpRecords')) || {};
-let serviceRecords = JSON.parse(localStorage.getItem('serviceRecords')) || [];
+// استيراد فايربيس
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAf36-2wJHyT3BcSlhKDvBcwvC_UYKG0F4",
+  authDomain: "deacon-2e046.firebaseapp.com",
+  projectId: "deacon-2e046",
+  storageBucket: "deacon-2e046.firebasestorage.app",
+  messagingSenderId: "833125342982",
+  appId: "1:833125342982:web:6c5fa5238f4fe07610c887",
+  measurementId: "G-V591C5ZGF1"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let deacons = [];
+let pendingRequests = [];
+let attendanceRecords = [];
+let followUpRecords = {};
+let serviceRecords = [];
 
 // مصفوفة المراحل الدراسية للترقية بالترتيب التصاعدي
 const studyYearsHierarchy = [
-    "أولى إعدادي",
-    "تانية إعدادي",
-    "تالتة إعدادي",
-    "أولى ثانوي",
-    "تانية ثانوي",
-    "تالتة ثانوي",
-    "جامعي"
+    "أولى إعدادي", "تانية إعدادي", "تالتة إعدادي",
+    "أولى ثانوي", "تانية ثانوي", "تالتة ثانوي", "جامعي"
 ];
+
+// الاستماع اللحظي للبيانات من Firestore عشان تظهر لأي جهاز في الحال
+function initRealtimeListeners() {
+    // 1. الشمامسة
+    onSnapshot(collection(db, "deacons"), (snapshot) => {
+        deacons = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderAllData();
+    });
+
+    // 2. الطلبات المعلقة (دي اللي هتحل مشكلة ظهور التسجيل من تليفون لآخر فوري)
+    onSnapshot(collection(db, "pendingRequests"), (snapshot) => {
+        pendingRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderAllData();
+    });
+
+    // 3. الحضور والغياب
+    onSnapshot(collection(db, "attendanceRecords"), (snapshot) => {
+        attendanceRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderAllData();
+    });
+
+    // 4. سجل الخدمات
+    onSnapshot(collection(db, "serviceRecords"), (snapshot) => {
+        serviceRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderAllData();
+    });
+
+    // 5. الافتقاد
+    onSnapshot(collection(db, "followUpRecords"), (snapshot) => {
+        followUpRecords = {};
+        snapshot.forEach(doc => {
+            followUpRecords[doc.id] = doc.data();
+        });
+        renderAllData();
+    });
+}
 
 // دالة الترقية التلقائية سنوياً فى عيد النيروز (11 سبتمبر)
 function checkNairouzPromotion() {
     let now = new Date();
     let currentYear = now.getFullYear();
-    let nairouzDateStr = `${currentYear}-09-11`; // تاريخ عيد النيروز
+    let nairouzDateStr = `${currentYear}-09-11`; 
     let lastCheckedYear = localStorage.getItem('lastNairouzPromotionYear');
 
-    // إذا دخلنا يوم 11 سبتمبر أو بعده ولم يتم ترقية الشمامسة في هذه السنة بعد
     if(now >= new Date(nairouzDateStr) && lastCheckedYear !== String(currentYear)) {
         let promoted = false;
-        deacons.forEach(d => {
+        deacons.forEach(async (d) => {
             let currentIndex = studyYearsHierarchy.indexOf(d.studyYear);
-            // إذا وجدنا الشماس في مرحلة أقل من الأخيرة، يتم نقله للمرحلة التالية تلقائياً
             if(currentIndex !== -1 && currentIndex < studyYearsHierarchy.length - 1) {
                 d.studyYear = studyYearsHierarchy[currentIndex + 1];
                 promoted = true;
+                if(d.id) {
+                    await updateDoc(doc(db, "deacons", d.id), { studyYear: d.studyYear });
+                }
             } else if(currentIndex === studyYearsHierarchy.length - 1) {
-                // من كان جامعياً يبقى جامعياً أو يتم التعامل معه حسب رغبتك
                 d.studyYear = "جامعي";
             }
         });
-
-        if(promoted) {
-            localStorage.setItem('deacons', JSON.stringify(deacons));
-        }
         localStorage.setItem('lastNairouzPromotionYear', String(currentYear));
     }
 }
 
-// تنفيذ فحص الترقية فور تحميل السكريبت
 checkNairouzPromotion();
+initRealtimeListeners();
 
-const ADMIN_PASS = "8264";
+const ADMIN_PASS = "2864";
 const attendDateInput = document.getElementById('attenddate');
 if(attendDateInput) attendDateInput.valueAsDate = new Date();
 
@@ -108,15 +152,19 @@ function submitPublicApplication() {
     } else { saveReq(name, dob, studyYear, confessionFather, status, ordination, ordinationDate, phone, 'https://via.placeholder.com/100'); }
 }
 
-function saveReq(name, dob, studyYear, confessionFather, status, ordination, ordinationDate, phone, photo) {
-    pendingRequests.push({ 
-        id: Date.now(), name, dob, studyYear, confessionFather, status, 
-        ordination: status==='مرسوم'?ordination:'-', 
-        ordinationDate: status==='مرسوم'?ordinationDate:'-', 
-        phone, photo 
-    });
-    localStorage.setItem('pendingRequests', JSON.stringify(pendingRequests));
-    alert('تم إرسال الطلب بنجاح!'); closePublicRegister();
+async function saveReq(name, dob, studyYear, confessionFather, status, ordination, ordinationDate, phone, photo) {
+    try {
+        await addDoc(collection(db, "pendingRequests"), { 
+            name, dob, studyYear, confessionFather, status, 
+            ordination: status==='مرسوم'?ordination:'-', 
+            ordinationDate: status==='مرسوم'?ordinationDate:'-', 
+            phone, photo, createdAt: Date.now() 
+        });
+        alert('تم إرسال الطلب بنجاح!'); 
+        closePublicRegister();
+    } catch (error) {
+        alert('حدث خطأ أثناء إرسال الطلب، تأكد من الاتصال بالإنترنت.');
+    }
 }
 
 function switchView(viewId, btn) {
@@ -141,8 +189,8 @@ function renderAllData() {
     renderServiceLogTable();
 }
 
-function approveRequest(idx) {
-    let req = pendingRequests[idx];
+async function approveRequest(index) {
+    let req = pendingRequests[index];
     let customCode = prompt(`أدخل الكود التعريفي للش شماس (${req.name}):`, "");
     if(!customCode) return;
     customCode = customCode.trim();
@@ -152,18 +200,44 @@ function approveRequest(idx) {
         return;
     }
 
-    deacons.push({ code: customCode, ...req });
-    pendingRequests.splice(idx, 1);
-    localStorage.setItem('deacons', JSON.stringify(deacons));
-    localStorage.setItem('pendingRequests', JSON.stringify(pendingRequests));
-    renderAllData();
-    alert('تم قبول الشماس وتكويده بنجاح!');
+    try {
+        // إضافة الشماس لقاعدة البيانات الرئيسية
+        await addDoc(collection(db, "deacons"), { 
+            code: customCode, 
+            name: req.name, 
+            dob: req.dob, 
+            studyYear: req.studyYear, 
+            confessionFather: req.confessionFather, 
+            status: req.status, 
+            ordination: req.ordination, 
+            ordinationDate: req.ordinationDate, 
+            phone: req.phone, 
+            photo: req.photo 
+        });
+
+        // حذف الطلب من الطلبات المعلقة
+        await deleteDoc(doc(db, "pendingRequests", req.id));
+        alert('تم قبول الشماس وتكويده بنجاح!');
+    } catch (e) {
+        alert('حدث خطأ أثناء عملية القبول.');
+    }
 }
 
-function rejectRequest(idx) { if(confirm('متأكد من الرفض؟')) { pendingRequests.splice(idx, 1); localStorage.setItem('pendingRequests', JSON.stringify(pendingRequests)); renderAllData(); } }
+async function rejectRequest(index) { 
+    if(confirm('متأكد من الرفض؟')) { 
+        let req = pendingRequests[index];
+        try {
+            await deleteDoc(doc(db, "pendingRequests", req.id));
+        } catch (e) {
+            alert('حدث خطأ أثناء الرفض.');
+        }
+    } 
+}
 
 function renderRequestsTable() {
-    const tb = document.getElementById('requestsTableBody'); tb.innerHTML = '';
+    const tb = document.getElementById('requestsTableBody'); 
+    if(!tb) return;
+    tb.innerHTML = '';
     pendingRequests.forEach((r, i) => {
         tb.innerHTML += `<tr>
             <td><img src="${r.photo}" class="deacon-avatar"></td>
@@ -177,7 +251,9 @@ function renderRequestsTable() {
 
 function renderMainDatabase() {
     const q = document.getElementById('searchDatabaseInput') ? document.getElementById('searchDatabaseInput').value.toLowerCase() : '';
-    const tb = document.getElementById('deaconsMainTable'); tb.innerHTML = '';
+    const tb = document.getElementById('deaconsMainTable'); 
+    if(!tb) return;
+    tb.innerHTML = '';
     deacons.filter(d => d.name.toLowerCase().includes(q) || d.code.toLowerCase().includes(q) || d.phone.includes(q)).forEach(d => {
         tb.innerHTML += `<tr>
             <td><img src="${d.photo}" class="deacon-avatar"></td>
@@ -189,7 +265,7 @@ function renderMainDatabase() {
             <td class="ltr-text">${d.phone}</td>
             <td>
                 <button class="btn-action btn-church" style="padding:4px 8px;" onclick="openEditModal('${d.code}')">تعديل</button>
-                <button class="btn-action btn-danger" style="padding:4px 8px;" onclick="deleteDeacon('${d.code}')">حذف</button>
+                <button class="btn-action btn-danger" style="padding:4px 8px;" onclick="deleteDeacon('${d.id}')">حذف</button>
             </td>
         </tr>`;
     });
@@ -198,7 +274,7 @@ function renderMainDatabase() {
 function openEditModal(code) {
     let d = deacons.find(x => x.code === code);
     if(!d) return;
-    document.getElementById('editOriginalCode').value = d.code;
+    document.getElementById('editOriginalCode').value = d.id; // نخزن الـ Firestore ID هنا لتسهيل التعديل
     document.getElementById('editCode').value = d.code;
     document.getElementById('editName').value = d.name;
     document.getElementById('editDob').value = d.dob || '';
@@ -215,53 +291,61 @@ function openEditModal(code) {
 
 function closeEditModal() { document.getElementById('editDeaconModal').style.display = 'none'; }
 
-function saveEditedDeacon() {
-    let origCode = document.getElementById('editOriginalCode').value;
-    let d = deacons.find(x => x.code === origCode);
+async function saveEditedDeacon() {
+    let docId = document.getElementById('editOriginalCode').value;
+    let d = deacons.find(x => x.id === docId);
     if(d) {
         let newCode = document.getElementById('editCode').value.trim();
-        if(newCode !== origCode && deacons.find(x => x.code === newCode)) {
+        if(newCode !== d.code && deacons.find(x => x.code === newCode)) {
             alert('هذا الكود الجديد مستخدم بالفعل لش شماس آخر!');
             return;
         }
 
-        d.code = newCode;
-        d.name = document.getElementById('editName').value;
-        d.dob = document.getElementById('editDob').value;
-        d.studyYear = document.getElementById('editStudyYear').value;
-        d.confessionFather = document.getElementById('editConfessionFather').value;
-        d.status = document.getElementById('editStatus').value;
-        d.ordination = d.status === 'مرسوم' ? document.getElementById('editOrdination').value : '-';
-        d.ordinationDate = d.status === 'مرسوم' ? document.getElementById('editOrdDate').value : '-';
-        d.phone = document.getElementById('editPhone').value;
+        let updatedData = {
+            code: newCode,
+            name: document.getElementById('editName').value,
+            dob: document.getElementById('editDob').value,
+            studyYear: document.getElementById('editStudyYear').value,
+            confessionFather: document.getElementById('editConfessionFather').value,
+            status: document.getElementById('editStatus').value,
+            ordination: document.getElementById('editStatus').value === 'مرسوم' ? document.getElementById('editOrdination').value : '-',
+            ordinationDate: document.getElementById('editStatus').value === 'مرسوم' ? document.getElementById('editOrdDate').value : '-',
+            phone: document.getElementById('editPhone').value
+        };
 
         let photoInput = document.getElementById('editPhoto');
         if(photoInput.files && photoInput.files[0]) {
             let reader = new FileReader();
             reader.readAsDataURL(photoInput.files[0]);
-            reader.onload = function(e) {
-                d.photo = e.target.result;
-                localStorage.setItem('deacons', JSON.stringify(deacons));
+            reader.onload = async function(e) {
+                updatedData.photo = e.target.result;
+                await updateDoc(doc(db, "deacons", docId), updatedData);
                 closeEditModal(); renderAllData(); alert('تم الحفظ بنجاح!');
             }
         } else {
-            localStorage.setItem('deacons', JSON.stringify(deacons));
+            await updateDoc(doc(db, "deacons", docId), updatedData);
             closeEditModal(); renderAllData(); alert('تم الحفظ بنجاح!');
         }
     }
 }
 
-function deleteDeacon(code) { 
+async function deleteDeacon(docId) { 
     if(confirm('حذف نهائي؟')) { 
-        deacons = deacons.filter(d => d.code !== code); 
-        localStorage.setItem('deacons', JSON.stringify(deacons)); 
-        renderAllData(); 
+        try {
+            await deleteDoc(doc(db, "deacons", docId));
+        } catch (e) {
+            alert('حدث خطأ أثناء الحذف.');
+        }
     } 
 }
 
 function renderServiceDeaconsList() {
-    const year = document.getElementById('serviceYearFilter').value;
-    const tb = document.getElementById('serviceDeaconsTableBody'); tb.innerHTML = '';
+    const yearElement = document.getElementById('serviceYearFilter');
+    if(!yearElement) return;
+    const year = yearElement.value;
+    const tb = document.getElementById('serviceDeaconsTableBody'); 
+    if(!tb) return;
+    tb.innerHTML = '';
     deacons.filter(d => d.studyYear === year).forEach(d => {
         tb.innerHTML += `<tr>
             <td><img src="${d.photo}" class="deacon-avatar"></td>
@@ -273,7 +357,7 @@ function renderServiceDeaconsList() {
     });
 }
 
-function assignService(code, serviceType) {
+async function assignService(code, serviceType) {
     let now = new Date();
     let lastServ = serviceRecords.slice().reverse().find(s => s.code === code && s.serviceType === serviceType);
     
@@ -286,22 +370,33 @@ function assignService(code, serviceType) {
     }
 
     let dateStr = now.toISOString().split('T')[0];
-    serviceRecords.push({ id: Date.now(), code, serviceType, date: dateStr });
-    localStorage.setItem('serviceRecords', JSON.stringify(serviceRecords));
-    renderServiceLogTable();
-    alert(`تم تسجيل (${serviceType}) بنجاح!`);
+    try {
+        await addDoc(collection(db, "serviceRecords"), { code, serviceType, date: dateStr });
+        alert(`تم تسجيل (${serviceType}) بنجاح!`);
+    } catch (e) {
+        alert('حدث خطأ أثناء حفظ الخدمة.');
+    }
 }
 
 function renderServiceLogTable() {
-    const tb = document.getElementById('serviceLogTableBody'); tb.innerHTML = '';
-    serviceRecords.forEach((s, idx) => {
+    const tb = document.getElementById('serviceLogTableBody'); 
+    if(!tb) return;
+    tb.innerHTML = '';
+    serviceRecords.forEach((s) => {
         let d = deacons.find(x => x.code === s.code);
-        tb.innerHTML += `<tr><td class="ltr-text">${s.code}</td><td>${d ? d.name : 'غير معروف'}</td><td>${s.serviceType}</td><td>${s.date}</td><td><button class="btn-action btn-danger" onclick="deleteServiceRecord(${idx})">حذف</button></td></tr>`;
+        tb.innerHTML += `<tr><td class="ltr-text">${s.code}</td><td>${d ? d.name : 'غير معروف'}</td><td>${s.serviceType}</td><td>${s.date}</td><td><button class="btn-action btn-danger" onclick="deleteServiceRecord('${s.id}')">حذف</button></td></tr>`;
     });
 }
-function deleteServiceRecord(idx) { serviceRecords.splice(idx, 1); localStorage.setItem('serviceRecords', JSON.stringify(serviceRecords)); renderServiceLogTable(); }
 
-function processScan(type) {
+async function deleteServiceRecord(docId) { 
+    try {
+        await deleteDoc(doc(db, "serviceRecords", docId));
+    } catch (e) {
+        alert('حدث خطأ أثناء الحذف.');
+    }
+}
+
+async function processScan(type) {
     const val = document.getElementById('scanInput').value.trim();
     const date = document.getElementById('attenddate').value;
     const alertBox = document.getElementById('scanResultAlert');
@@ -314,29 +409,48 @@ function processScan(type) {
     }
 
     let rec = attendanceRecords.find(r => r.code === deacon.code && r.date === date);
-    if(!rec) { rec = { code: deacon.code, date, classStatus: 'غائب', massStatus: 'غائب' }; attendanceRecords.push(rec); }
-    if(type === 'class') rec.classStatus = 'حاضر';
-    if(type === 'mass') rec.massStatus = 'حاضر';
+    try {
+        if(!rec) {
+            let newRec = { code: deacon.code, date, classStatus: type === 'class' ? 'حاضر' : 'غائب', massStatus: type === 'mass' ? 'حاضر' : 'غائب' };
+            await addDoc(collection(db, "attendanceRecords"), newRec);
+        } else {
+            let updatePayload = {};
+            if(type === 'class') updatePayload.classStatus = 'حاضر';
+            if(type === 'mass') updatePayload.massStatus = 'حاضر';
+            await updateDoc(doc(db, "attendanceRecords", rec.id), updatePayload);
+        }
 
-    localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
-    alertBox.style.display = 'block'; alertBox.style.background = '#d4edda'; alertBox.style.color = '#155724';
-    alertBox.innerText = `تم تسجيل حضور (${type==='class'?'حصة':'قداس'}) للشماس: ${deacon.name}`;
-    document.getElementById('scanInput').value = '';
-    document.getElementById('scanInput').focus();
-    renderAttendanceTable();
+        alertBox.style.display = 'block'; alertBox.style.background = '#d4edda'; alertBox.style.color = '#155724';
+        alertBox.innerText = `تم تسجيل حضور (${type==='class'?'حصة':'قداس'}) للشماس: ${deacon.name}`;
+        document.getElementById('scanInput').value = '';
+        document.getElementById('scanInput').focus();
+    } catch (e) {
+        alert('حدث خطأ أثناء تسجيل الحضور.');
+    }
 }
 
 function renderAttendanceTable() {
-    const tb = document.getElementById('attendanceTableBody'); tb.innerHTML = '';
-    attendanceRecords.forEach((r, idx) => {
+    const tb = document.getElementById('attendanceTableBody'); 
+    if(!tb) return;
+    tb.innerHTML = '';
+    attendanceRecords.forEach((r) => {
         let d = deacons.find(x => x.code === r.code);
-        tb.innerHTML += `<tr><td class="ltr-text">${r.code}</td><td>${d?d.name:'غير معروف'}</td><td>${r.date}</td><td>${r.classStatus}</td><td>${r.massStatus}</td><td><button class="btn-action btn-danger" onclick="deleteAtt(${idx})">حذف</button></td></tr>`;
+        tb.innerHTML += `<tr><td class="ltr-text">${r.code}</td><td>${d?d.name:'غير معروف'}</td><td>${r.date}</td><td>${r.classStatus}</td><td>${r.massStatus}</td><td><button class="btn-action btn-danger" onclick="deleteAtt('${r.id}')">حذف</button></td></tr>`;
     });
 }
-function deleteAtt(idx) { attendanceRecords.splice(idx, 1); localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords)); renderAttendanceTable(); }
+
+async function deleteAtt(docId) { 
+    try {
+        await deleteDoc(doc(db, "attendanceRecords", docId));
+    } catch (e) {
+        alert('حدث خطأ أثناء الحذف.');
+    }
+}
 
 function renderIdCards() {
-    const c = document.getElementById('idCardsContainer'); c.innerHTML = '';
+    const c = document.getElementById('idCardsContainer'); 
+    if(!c) return;
+    c.innerHTML = '';
     deacons.forEach(d => {
         c.innerHTML += `
             <div class="id-card">
@@ -368,16 +482,23 @@ function renderIdCards() {
 function printIdCards() { renderIdCards(); setTimeout(() => { window.print(); }, 400); }
 
 function renderFollowUpTable() {
-    const tb = document.getElementById('followUpTableBody'); tb.innerHTML = '';
+    const tb = document.getElementById('followUpTableBody'); 
+    if(!tb) return;
+    tb.innerHTML = '';
     deacons.forEach(d => {
         let attCount = attendanceRecords.filter(r => r.code === d.code && (r.classStatus==='حاضر'||r.massStatus==='حاضر')).length;
         let st = followUpRecords[d.code] ? followUpRecords[d.code].status : 'يحتاج افتقاد';
         tb.innerHTML += `<tr><td><img src="${d.photo}" class="deacon-avatar"></td><td class="ltr-text">${d.code}</td><td>${d.name}</td><td>${d.studyYear}</td><td><b>${attCount}</b></td><td>${st}</td><td><button class="btn-action btn-success" onclick="markFollow('${d.code}')">تم</button></td></tr>`;
     });
 }
-function markFollow(code) {
-    followUpRecords[code] = { status: 'تم الافتقاد', date: new Date().toISOString().split('T')[0] };
-    localStorage.setItem('followUpRecords', JSON.stringify(followUpRecords)); renderFollowUpTable();
+
+async function markFollow(code) {
+    let followData = { status: 'تم الافتقاد', date: new Date().toISOString().split('T')[0] };
+    try {
+        await setDoc(doc(db, "followUpRecords", code), followData);
+    } catch (e) {
+        alert('حدث خطأ أثناء حفظ الافتقاد.');
+    }
 }
 
 function exportTableToCSV(filename, rows) {
@@ -430,3 +551,31 @@ function exportFollowUpExcel() {
     });
     exportTableToCSV("سجل_متابعة_الافتقاد.csv", rows);
 }
+
+// ربط الدوال بالـ window عشان تفضل شغالين مع الأزرار في الـ HTML
+window.openServantLogin = openServantLogin;
+window.closeServantLogin = closeServantLogin;
+window.openPublicRegister = openPublicRegister;
+window.closePublicRegister = closePublicRegister;
+window.checkAdminLogin = checkAdminLogin;
+window.logoutSystem = logoutSystem;
+window.togglePubOrd = togglePubOrd;
+window.toggleEditOrd = toggleEditOrd;
+window.submitPublicApplication = submitPublicApplication;
+window.switchView = switchView;
+window.approveRequest = approveRequest;
+window.rejectRequest = rejectRequest;
+window.openEditModal = openEditModal;
+window.closeEditModal = closeEditModal;
+window.saveEditedDeacon = saveEditedDeacon;
+window.deleteDeacon = deleteDeacon;
+window.assignService = assignService;
+window.deleteServiceRecord = deleteServiceRecord;
+window.processScan = processScan;
+window.deleteAtt = deleteAtt;
+window.printIdCards = printIdCards;
+window.markFollow = markFollow;
+window.exportDatabaseExcel = exportDatabaseExcel;
+window.exportAttendanceExcel = exportAttendanceExcel;
+window.exportServiceExcel = exportServiceExcel;
+window.exportFollowUpExcel = exportFollowUpExcel;
