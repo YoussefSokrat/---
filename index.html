@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خدمة الشهيد كيرياكوس - إدارة الشمامسة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Cairo:wght@400;600;700&family=Cinzel:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+</head>
+<body>
+
+    <!-- 1. واجهة الترحيب الرئيسية -->
+    <div id="welcomeHomeOverlay" class="hero-overlay">
+        <div class="welcome-card">
+            <img src="logoicon.jpg" alt="صورة الخدمة" class="logo-img">
+            <h2>خدمة الشهيد كيرياكوس</h2>
+            <div class="welcome-subtitle">نظام إدارة شؤون الشمامسة والخدمة</div>
+            <div class="welcome-buttons">
+                <button class="btn-hero btn-servant-login" onclick="openServantLogin()">دخول الخادم / المسؤول</button>
+                <button class="btn-hero btn-deacon-reg" onclick="openPublicRegister()">تسجيل شماس جديد (استمارة عامة)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. نافذة تسجيل دخول المسؤول -->
+    <div id="loginOverlay" class="modal-overlay" style="display: none;">
+        <div class="large-modal-card">
+            <h2>تسجيل دخول المسؤول</h2>
+            <div class="form-group" style="margin-top: 20px;">
+                <input type="password" id="adminPassword" class="form-control" placeholder="أدخل كلمة المرور (1234)" autofocus onkeydown="if(event.key === 'Enter') checkAdminLogin()">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn-action btn-church" style="flex: 1;" onclick="checkAdminLogin()">دخول</button>
+                <button class="btn-action btn-secondary-back" style="flex: 1;" onclick="closeServantLogin()">رجوع</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. استمارة التسجيل العامة للشماس الجديد (بدون خانة النظام) -->
+    <div id="publicRegisterModal" class="modal-overlay" style="display: none;">
+        <div class="large-modal-card wide-form-card">
+            <h2>استمارة تسجيل شماس جديد</h2>
+            <div class="form-grid" style="margin-top: 20px;">
+                <div class="form-group">
+                    <label>الاسم الثلاثي:</label>
+                    <input type="text" id="pubName" autofocus>
+                </div>
+                <div class="form-group">
+                    <label>تاريخ الميلاد:</label>
+                    <input type="date" id="pubDob">
+                </div>
+                <div class="form-group">
+                    <label>السنة الدراسية:</label>
+                    <select id="pubStudyYear">
+                        <option value="أولى إعدادي">أولى إعدادي</option>
+                        <option value="تانية إعدادي">تانية إعدادي</option>
+                        <option value="تالتة إعدادي">تالتة إعدادي</option>
+                        <option value="أولى ثانوي">أولى ثانوي</option>
+                        <option value="تانية ثانوي">تانية ثانوي</option>
+                        <option value="تالتة ثانوي">تالتة ثانوي</option>
+                        <option value="جامعي">جامعي</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>أب الاعتراف:</label>
+                    <input type="text" id="pubConfessionFather">
+                </div>
+                <div class="form-group">
+                    <label>الحالة:</label>
+                    <select id="pubStatus" onchange="togglePubOrd(this)">
+                        <option value="غير مرسوم">غير مرسوم</option>
+                        <option value="مرسوم">مرسوم</option>
+                    </select>
+                </div>
+                <div class="form-group" id="pubOrdGroup" style="display:none;">
+                    <label>درجة الإرسومة (الرتبة):</label>
+                    <input type="text" id="pubOrdination" placeholder="إبصالتس / أغنسطس / ...">
+                </div>
+                <div class="form-group" id="pubOrdDateGroup" style="display:none;">
+                    <label>تاريخ الرسامة:</label>
+                    <input type="date" id="pubOrdDate">
+                </div>
+                <div class="form-group">
+                    <label>رقم الهاتف:</label>
+                    <input type="text" id="pubPhone" class="ltr-text" placeholder="01xxxxxxxxx">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>صورة الشماس:</label>
+                    <input type="file" id="pubPhoto" accept="image/*">
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn-action btn-church" style="flex: 1;" onclick="submitPublicApplication()">إرسال الطلب</button>
+                <button class="btn-action btn-secondary-back" style="flex: 1;" onclick="closePublicRegister()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. المنصة الرئيسية -->
+    <div id="mainPlatform" class="container" style="display: none;">
+        <!-- الهيدر المدمج بدون حواف خطوط وبدون صندوق ظاهر -->
+        <header class="seamless-header">
+            <div class="header-placeholder"></div>
+            <h2>خدمة الشهيد كيرياكوس - لوحة التحكم</h2>
+            <button class="btn-action btn-danger logout-side-btn" onclick="logoutSystem()">تسجيل الخروج</button>
+        </header>
+
+        <!-- الأزرار مرنة وتلتف تلقائياً بدون حاوي إجباري أو تحريك أفقي -->
+        <div class="nav-buttons-fluid">
+            <button class="btn-nav active-btn" onclick="switchView('viewRequests', this)">طلبات الانضمام <span id="reqBadge" style="background:#8b0000; color:#fff; padding:2px 6px; border-radius:10px; font-size:11px;">0</span></button>
+            <button class="btn-nav" onclick="switchView('viewDatabase', this)">قاعدة بيانات الشمامسة</button>
+            <button class="btn-nav" onclick="switchView('viewAttendance', this)">حضور القداس والحصة</button>
+            <button class="btn-nav" onclick="switchView('viewFollowUp', this)">متابعة الغياب</button>
+            <button class="btn-nav" onclick="switchView('viewService', this)">توزيع الخدمات</button>
+            <button class="btn-nav" onclick="switchView('viewCards', this)">كارنيهات الشمامسة</button>
+        </div>
+
+        <div class="views-container">
+            <!-- طلبات الانضمام -->
+            <div id="viewRequests" class="view active">
+                <h3>الطلبات المعلقة</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>الصورة</th>
+                                <th>الاسم</th>
+                                <th>تاريخ الميلاد</th>
+                                <th>المرحلة</th>
+                                <th>أب الاعتراف</th>
+                                <th>الحالة</th>
+                                <th>الهاتف</th>
+                                <th>الإجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody id="requestsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- قاعدة البيانات -->
+            <div id="viewDatabase" class="view">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                    <h3>إدارة جميع الشمامسة</h3>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="searchDatabaseInput" style="width: 250px; padding: 10px;" placeholder="بحث بالاسم، الكود، الهاتف..." oninput="renderMainDatabase()">
+                        <button class="btn-action btn-export" onclick="exportDatabaseExcel()">تصدير Excel</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>الصورة</th>
+                                <th>الكود</th>
+                                <th>الاسم</th>
+                                <th>المرحلة</th>
+                                <th>أب الاعتراف</th>
+                                <th>الحالة والرسامة</th>
+                                <th>الهاتف</th>
+                                <th>التحكم</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deaconsMainTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- الحضور والغياب -->
+            <div id="viewAttendance" class="view">
+                <h3>تسجيل الحضور</h3>
+                <div style="display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
+                    <input type="date" id="attenddate" style="width: 180px;">
+                    <input type="text" id="scanInput" style="flex: 1; min-width: 200px;" placeholder="امسح الباركود أو اكتب الكود/الاسم هنا..." autofocus onkeydown="if(event.key === 'Enter') processScan('mass')">
+                    <button class="btn-action btn-church" onclick="processScan('class')">تسجيل حصة</button>
+                    <button class="btn-action btn-success" onclick="processScan('mass')">تسجيل قداس</button>
+                </div>
+                <div id="scanResultAlert" style="margin-top: 15px; padding: 10px; border-radius: 8px; display: none; font-weight: bold;"></div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <h3>سجل الحضور المسجل</h3>
+                    <button class="btn-action btn-export" onclick="exportAttendanceExcel()">تصدير Excel</button>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>الكود</th>
+                                <th>الاسم</th>
+                                <th>التاريخ</th>
+                                <th>الحصة</th>
+                                <th>القداس</th>
+                                <th>حذف</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- متابعة الافتقاد -->
+            <div id="viewFollowUp" class="view">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <h3>متابعة افتقاد الغائبين</h3>
+                    <button class="btn-action btn-export" onclick="exportFollowUpExcel()">تصدير Excel</button>
+                </div>
+                <div class="table-responsive" style="margin-top: 10px;">
+                    <table>
+                        <thead>
+                            <tr class="follow-up-header">
+                                <th>الصورة</th>
+                                <th>الكود</th>
+                                <th>الاسم</th>
+                                <th>المرحلة</th>
+                                <th>حضور الفترات الأخيرة</th>
+                                <th>حالة الافتقاد</th>
+                                <th>تحديث</th>
+                            </tr>
+                        </thead>
+                        <tbody id="followUpTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- توزيع الخدمات -->
+            <div id="viewService" class="view">
+                <h3>توزيع خدمات القراءات والمسبح</h3>
+                <div style="margin-top: 15px; margin-bottom: 20px;">
+                    <label>اختر المرحلة الدراسية:</label>
+                    <select id="serviceYearFilter" onchange="renderServiceDeaconsList()" style="width: 250px;">
+                        <option value="أولى إعدادي">أولى إعدادي</option>
+                        <option value="تانية إعدادي">تانية إعدادي</option>
+                        <option value="تالتة إعدادي">تالتة إعدادي</option>
+                        <option value="أولى ثانوي">أولى ثانوي</option>
+                        <option value="تانية ثانوي">تانية ثانوي</option>
+                        <option value="تالتة ثانوي">تالتة ثانوي</option>
+                        <option value="جامعي">جامعي</option>
+                    </select>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>الصورة</th>
+                                <th>الكود</th>
+                                <th>الاسم</th>
+                                <th>تعيين قراءات</th>
+                                <th>تعيين مسبح</th>
+                            </tr>
+                        </thead>
+                        <tbody id="serviceDeaconsTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 35px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <h3>سجل الخدمات الموزعة</h3>
+                    <button class="btn-action btn-export" onclick="exportServiceExcel()">تصدير Excel</button>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>الكود</th>
+                                <th>الاسم</th>
+                                <th>نوع الخدمة</th>
+                                <th>التاريخ</th>
+                                <th>إلغاء</th>
+                            </tr>
+                        </thead>
+                        <tbody id="serviceLogTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- كارنيهات الشمامسة -->
+            <div id="viewCards" class="view">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                    <h3>كارنيهات الشمامسة (جاهزة للطباعة وحفظ PDF)</h3>
+                    <button class="btn-action btn-success" onclick="printIdCards()" style="padding: 12px 25px; font-size: 16px;">طباعة الكارنيهات / حفظ PDF</button>
+                </div>
+                <div id="idCardsView">
+                    <div id="idCardsContainer" class="id-cards-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- توقيع SOKRAT المتحرك أسفل الصفحة -->
+        <footer class="sokrat-footer">
+            <div class="sokrat-neon-text">SOKRAT</div>
+        </footer>
+    </div>
+
+    <!-- نافذة التعديل للش شماس -->
+    <div id="editDeaconModal" class="modal-overlay" style="display: none;">
+        <div class="large-modal-card wide-form-card">
+            <h2>تعديل بيانات الشماس</h2>
+            <input type="hidden" id="editOriginalCode">
+            <div class="form-grid" style="margin-top: 20px;">
+                <div class="form-group">
+                    <label>الكود التعريفي:</label>
+                    <input type="text" id="editCode" class="ltr-text">
+                </div>
+                <div class="form-group">
+                    <label>الاسم الثلاثي:</label>
+                    <input type="text" id="editName">
+                </div>
+                <div class="form-group">
+                    <label>تاريخ الميلاد:</label>
+                    <input type="date" id="editDob">
+                </div>
+                <div class="form-group">
+                    <label>السنة الدراسية:</label>
+                    <select id="editStudyYear">
+                        <option value="أولى إعدادي">أولى إعدادي</option>
+                        <option value="تانية إعدادي">تانية إعدادي</option>
+                        <option value="تالتة إعدادي">تالتة إعدادي</option>
+                        <option value="أولى ثانوي">أولى ثانوي</option>
+                        <option value="تانية ثانوي">تانية ثانوي</option>
+                        <option value="تالتة ثانوي">تالتة ثانوي</option>
+                        <option value="جامعي">جامعي</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>أب الاعتراف:</label>
+                    <input type="text" id="editConfessionFather">
+                </div>
+                <div class="form-group">
+                    <label>الحالة:</label>
+                    <select id="editStatus" onchange="toggleEditOrd(this)">
+                        <option value="غير مرسوم">غير مرسوم</option>
+                        <option value="مرسوم">مرسوم</option>
+                    </select>
+                </div>
+                <div class="form-group" id="editOrdGroup" style="display:none;">
+                    <label>درجة الإرسومة (الرتبة):</label>
+                    <input type="text" id="editOrdination">
+                </div>
+                <div class="form-group" id="editOrdDateGroup" style="display:none;">
+                    <label>تاريخ الرسامة:</label>
+                    <input type="date" id="editOrdDate">
+                </div>
+                <div class="form-group">
+                    <label>رقم الهاتف:</label>
+                    <input type="text" id="editPhone" class="ltr-text">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>تحديث الصورة (اختياري):</label>
+                    <input type="file" id="editPhoto" accept="image/*">
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn-action btn-church" style="flex: 1;" onclick="saveEditedDeacon()">حفظ التعديلات</button>
+                <button class="btn-action btn-secondary-back" style="flex: 1;" onclick="closeEditModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
