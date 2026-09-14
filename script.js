@@ -1,4 +1,3 @@
-// استيراد فايربيس
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -21,39 +20,34 @@ let attendanceRecords = [];
 let followUpRecords = {};
 let serviceRecords = [];
 
-// مصفوفة المراحل الدراسية للترقية بالترتيب التصاعدي
+let html5QrCode = null;
+
 const studyYearsHierarchy = [
     "أولى إعدادي", "تانية إعدادي", "تالتة إعدادي",
     "أولى ثانوي", "تانية ثانوي", "تالتة ثانوي", "جامعي"
 ];
 
-// الاستماع اللحظي للبيانات من Firestore عشان تظهر لأي جهاز في الحال
 function initRealtimeListeners() {
-    // 1. الشمامسة
     onSnapshot(collection(db, "deacons"), (snapshot) => {
         deacons = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderAllData();
     });
 
-    // 2. الطلبات المعلقة (دي اللي هتحل مشكلة ظهور التسجيل من تليفون لآخر فوري)
     onSnapshot(collection(db, "pendingRequests"), (snapshot) => {
         pendingRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderAllData();
     });
 
-    // 3. الحضور والغياب
     onSnapshot(collection(db, "attendanceRecords"), (snapshot) => {
         attendanceRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderAllData();
     });
 
-    // 4. سجل الخدمات
     onSnapshot(collection(db, "serviceRecords"), (snapshot) => {
         serviceRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderAllData();
     });
 
-    // 5. الافتقاد
     onSnapshot(collection(db, "followUpRecords"), (snapshot) => {
         followUpRecords = {};
         snapshot.forEach(doc => {
@@ -63,7 +57,6 @@ function initRealtimeListeners() {
     });
 }
 
-// دالة الترقية التلقائية سنوياً فى عيد النيروز (11 سبتمبر)
 function checkNairouzPromotion() {
     let now = new Date();
     let currentYear = now.getFullYear();
@@ -71,12 +64,10 @@ function checkNairouzPromotion() {
     let lastCheckedYear = localStorage.getItem('lastNairouzPromotionYear');
 
     if(now >= new Date(nairouzDateStr) && lastCheckedYear !== String(currentYear)) {
-        let promoted = false;
         deacons.forEach(async (d) => {
             let currentIndex = studyYearsHierarchy.indexOf(d.studyYear);
             if(currentIndex !== -1 && currentIndex < studyYearsHierarchy.length - 1) {
                 d.studyYear = studyYearsHierarchy[currentIndex + 1];
-                promoted = true;
                 if(d.id) {
                     await updateDoc(doc(db, "deacons", d.id), { studyYear: d.studyYear });
                 }
@@ -95,45 +86,58 @@ const ADMIN_PASS = "2864";
 const attendDateInput = document.getElementById('attenddate');
 if(attendDateInput) attendDateInput.valueAsDate = new Date();
 
-function openServantLogin() { 
+// دوال التحكم بالواجهة
+window.openServantLogin = function() { 
     document.getElementById('welcomeHomeOverlay').style.display = 'none'; 
     document.getElementById('loginOverlay').style.display = 'flex';
     setTimeout(() => { document.getElementById('adminPassword').focus(); }, 100);
-}
-function closeServantLogin() { 
+};
+
+window.closeServantLogin = function() { 
     document.getElementById('loginOverlay').style.display = 'none'; 
     document.getElementById('welcomeHomeOverlay').style.display = 'flex'; 
-}
-function openPublicRegister() { 
+};
+
+window.openPublicRegister = function() { 
     document.getElementById('welcomeHomeOverlay').style.display = 'none'; 
     document.getElementById('publicRegisterModal').style.display = 'flex';
     setTimeout(() => { document.getElementById('pubName').focus(); }, 100);
-}
-function closePublicRegister() { 
+};
+
+window.closePublicRegister = function() { 
     document.getElementById('publicRegisterModal').style.display = 'none'; 
     document.getElementById('welcomeHomeOverlay').style.display = 'flex'; 
-}
-function checkAdminLogin() {
+};
+
+window.checkAdminLogin = function() {
     if(document.getElementById('adminPassword').value === ADMIN_PASS) {
         document.getElementById('loginOverlay').style.display = 'none';
         document.getElementById('mainPlatform').style.display = 'flex';
         renderAllData();
-    } else { alert('كلمة المرور غير صحيحة!'); }
-}
-function logoutSystem() { document.getElementById('mainPlatform').style.display = 'none'; document.getElementById('welcomeHomeOverlay').style.display = 'flex'; }
+    } else { 
+        alert('كلمة المرور غير صحيحة!'); 
+    }
+};
 
-function togglePubOrd(el) { 
+window.logoutSystem = function() { 
+    stopScanner();
+    document.getElementById('mainPlatform').style.display = 'none'; 
+    document.getElementById('welcomeHomeOverlay').style.display = 'flex'; 
+};
+
+window.togglePubOrd = function(el) { 
     let show = (el.value === 'مرسوم');
     document.getElementById('pubOrdGroup').style.display = show ? 'block' : 'none';
     document.getElementById('pubOrdDateGroup').style.display = show ? 'block' : 'none';
-}
-function toggleEditOrd(el) { 
+};
+
+window.toggleEditOrd = function(el) { 
     let show = (el.value === 'مرسوم');
     document.getElementById('editOrdGroup').style.display = show ? 'block' : 'none';
     document.getElementById('editOrdDateGroup').style.display = show ? 'block' : 'none';
-}
+};
 
-function submitPublicApplication() {
+window.submitPublicApplication = function() {
     const name = document.getElementById('pubName').value.trim();
     const dob = document.getElementById('pubDob').value;
     const studyYear = document.getElementById('pubStudyYear').value;
@@ -148,9 +152,9 @@ function submitPublicApplication() {
     let reader = new FileReader();
     if(photoInput.files && photoInput.files[0]) {
         reader.readAsDataURL(photoInput.files[0]);
-        reader.onload = function(e) { saveReq(name, dob, studyYear, confessionFather, status, ordination, ordinationDate, phone, e.target.result); }
+        reader.onload = function(e) { saveReq(name, dob, studyYear, confessionFather, status, ordination, ordinationDate, phone, e.target.result); };
     } else { saveReq(name, dob, studyYear, confessionFather, status, ordination, ordinationDate, phone, 'https://via.placeholder.com/100'); }
-}
+};
 
 async function saveReq(name, dob, studyYear, confessionFather, status, ordination, ordinationDate, phone, photo) {
     try {
@@ -161,13 +165,13 @@ async function saveReq(name, dob, studyYear, confessionFather, status, ordinatio
             phone, photo, createdAt: Date.now() 
         });
         alert('تم إرسال الطلب بنجاح!'); 
-        closePublicRegister();
+        window.closePublicRegister();
     } catch (error) {
         alert('حدث خطأ أثناء إرسال الطلب، تأكد من الاتصال بالإنترنت.');
     }
 }
 
-function switchView(viewId, btn) {
+window.switchView = function(viewId, btn) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.btn-nav').forEach(b => b.classList.remove('active-btn'));
     document.getElementById(viewId).classList.add('active');
@@ -175,11 +179,14 @@ function switchView(viewId, btn) {
     renderAllData();
     if(viewId === 'viewAttendance') {
         setTimeout(() => { document.getElementById('scanInput').focus(); }, 100);
+    } else {
+        stopScanner();
     }
-}
+};
 
 function renderAllData() {
-    document.getElementById('reqBadge').innerText = pendingRequests.length;
+    const badge = document.getElementById('reqBadge');
+    if(badge) badge.innerText = pendingRequests.length;
     renderRequestsTable();
     renderMainDatabase();
     renderIdCards();
@@ -189,19 +196,18 @@ function renderAllData() {
     renderServiceLogTable();
 }
 
-async function approveRequest(index) {
+window.approveRequest = async function(index) {
     let req = pendingRequests[index];
-    let customCode = prompt(`أدخل الكود التعريفي للش شماس (${req.name}):`, "");
+    let customCode = prompt(`أدخل الكود التعريفي للشماس (${req.name}):`, "");
     if(!customCode) return;
     customCode = customCode.trim();
 
     if(deacons.find(d => d.code === customCode)) {
-        alert('هذا الكود مستخدم بالفعل لش شماس آخر!');
+        alert('هذا الكود مستخدم بالفعل لشماس آخر!');
         return;
     }
 
     try {
-        // إضافة الشماس لقاعدة البيانات الرئيسية
         await addDoc(collection(db, "deacons"), { 
             code: customCode, 
             name: req.name, 
@@ -215,15 +221,14 @@ async function approveRequest(index) {
             photo: req.photo 
         });
 
-        // حذف الطلب من الطلبات المعلقة
         await deleteDoc(doc(db, "pendingRequests", req.id));
         alert('تم قبول الشماس وتكويده بنجاح!');
     } catch (e) {
         alert('حدث خطأ أثناء عملية القبول.');
     }
-}
+};
 
-async function rejectRequest(index) { 
+window.rejectRequest = async function(index) { 
     if(confirm('متأكد من الرفض؟')) { 
         let req = pendingRequests[index];
         try {
@@ -232,7 +237,7 @@ async function rejectRequest(index) {
             alert('حدث خطأ أثناء الرفض.');
         }
     } 
-}
+};
 
 function renderRequestsTable() {
     const tb = document.getElementById('requestsTableBody'); 
@@ -249,7 +254,7 @@ function renderRequestsTable() {
     });
 }
 
-function renderMainDatabase() {
+window.renderMainDatabase = function() {
     const q = document.getElementById('searchDatabaseInput') ? document.getElementById('searchDatabaseInput').value.toLowerCase() : '';
     const tb = document.getElementById('deaconsMainTable'); 
     if(!tb) return;
@@ -269,35 +274,35 @@ function renderMainDatabase() {
             </td>
         </tr>`;
     });
-}
+};
 
-function openEditModal(code) {
+window.openEditModal = function(code) {
     let d = deacons.find(x => x.code === code);
     if(!d) return;
-    document.getElementById('editOriginalCode').value = d.id; // نخزن الـ Firestore ID هنا لتسهيل التعديل
+    document.getElementById('editOriginalCode').value = d.id;
     document.getElementById('editCode').value = d.code;
     document.getElementById('editName').value = d.name;
     document.getElementById('editDob').value = d.dob || '';
     document.getElementById('editStudyYear').value = d.studyYear;
     document.getElementById('editConfessionFather').value = d.confessionFather || '';
     document.getElementById('editStatus').value = d.status || 'غير مرسوم';
-    toggleEditOrd(document.getElementById('editStatus'));
+    window.toggleEditOrd(document.getElementById('editStatus'));
     document.getElementById('editOrdination').value = d.ordination !== '-' ? d.ordination : '';
     document.getElementById('editOrdDate').value = d.ordinationDate !== '-' ? d.ordinationDate : '';
     document.getElementById('editPhone').value = d.phone || '';
     document.getElementById('editPhoto').value = '';
     document.getElementById('editDeaconModal').style.display = 'flex';
-}
+};
 
-function closeEditModal() { document.getElementById('editDeaconModal').style.display = 'none'; }
+window.closeEditModal = function() { document.getElementById('editDeaconModal').style.display = 'none'; };
 
-async function saveEditedDeacon() {
+window.saveEditedDeacon = async function() {
     let docId = document.getElementById('editOriginalCode').value;
     let d = deacons.find(x => x.id === docId);
     if(d) {
         let newCode = document.getElementById('editCode').value.trim();
         if(newCode !== d.code && deacons.find(x => x.code === newCode)) {
-            alert('هذا الكود الجديد مستخدم بالفعل لش شماس آخر!');
+            alert('هذا الكود الجديد مستخدم بالفعل لشماس آخر!');
             return;
         }
 
@@ -320,16 +325,16 @@ async function saveEditedDeacon() {
             reader.onload = async function(e) {
                 updatedData.photo = e.target.result;
                 await updateDoc(doc(db, "deacons", docId), updatedData);
-                closeEditModal(); renderAllData(); alert('تم الحفظ بنجاح!');
-            }
+                window.closeEditModal(); renderAllData(); alert('تم الحفظ بنجاح!');
+            };
         } else {
             await updateDoc(doc(db, "deacons", docId), updatedData);
-            closeEditModal(); renderAllData(); alert('تم الحفظ بنجاح!');
+            window.closeEditModal(); renderAllData(); alert('تم الحفظ بنجاح!');
         }
     }
-}
+};
 
-async function deleteDeacon(docId) { 
+window.deleteDeacon = async function(docId) { 
     if(confirm('حذف نهائي؟')) { 
         try {
             await deleteDoc(doc(db, "deacons", docId));
@@ -337,9 +342,9 @@ async function deleteDeacon(docId) {
             alert('حدث خطأ أثناء الحذف.');
         }
     } 
-}
+};
 
-function renderServiceDeaconsList() {
+window.renderServiceDeaconsList = function() {
     const yearElement = document.getElementById('serviceYearFilter');
     if(!yearElement) return;
     const year = yearElement.value;
@@ -355,9 +360,9 @@ function renderServiceDeaconsList() {
             <td><button class="btn-action btn-success" onclick="assignService('${d.code}', 'خدمة مسبح')">تعيين مسبح</button></td>
         </tr>`;
     });
-}
+};
 
-async function assignService(code, serviceType) {
+window.assignService = async function(code, serviceType) {
     let now = new Date();
     let lastServ = serviceRecords.slice().reverse().find(s => s.code === code && s.serviceType === serviceType);
     
@@ -376,7 +381,7 @@ async function assignService(code, serviceType) {
     } catch (e) {
         alert('حدث خطأ أثناء حفظ الخدمة.');
     }
-}
+};
 
 function renderServiceLogTable() {
     const tb = document.getElementById('serviceLogTableBody'); 
@@ -388,15 +393,53 @@ function renderServiceLogTable() {
     });
 }
 
-async function deleteServiceRecord(docId) { 
+window.deleteServiceRecord = async function(docId) { 
     try {
         await deleteDoc(doc(db, "serviceRecords", docId));
     } catch (e) {
         alert('حدث خطأ أثناء الحذف.');
     }
-}
+};
 
-async function processScan(type) {
+// --- كاميرا الموبايل لمسح الكود تلقائياً ---
+window.startScanner = function() {
+    const readerDiv = document.getElementById('reader');
+    readerDiv.style.display = 'block';
+    document.getElementById('stopScannerBtn').style.display = 'inline-block';
+
+    html5QrCode = new Html5Qrcode("reader");
+    
+    html5QrCode.start(
+        { facingMode: "environment" }, 
+        {
+            fps: 10,
+            qrbox: { width: 250, height: 100 }
+        },
+        (decodedText) => {
+            const scanInput = document.getElementById('scanInput');
+            if(scanInput) {
+                scanInput.value = decodedText;
+            }
+            window.stopScanner();
+        },
+        (errorMessage) => {}
+    ).catch((err) => {
+        alert("فشل تشغيل الكاميرا، تأكد من إعطاء الصلاحية للموقع في المتصفح: " + err);
+    });
+};
+
+window.stopScanner = function() {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            document.getElementById('reader').style.display = 'none';
+            document.getElementById('stopScannerBtn').style.display = 'none';
+        }).catch((err) => {
+            console.error(err);
+        });
+    }
+};
+
+window.processScan = async function(type) {
     const val = document.getElementById('scanInput').value.trim();
     const date = document.getElementById('attenddate').value;
     const alertBox = document.getElementById('scanResultAlert');
@@ -427,7 +470,7 @@ async function processScan(type) {
     } catch (e) {
         alert('حدث خطأ أثناء تسجيل الحضور.');
     }
-}
+};
 
 function renderAttendanceTable() {
     const tb = document.getElementById('attendanceTableBody'); 
@@ -439,13 +482,42 @@ function renderAttendanceTable() {
     });
 }
 
-async function deleteAtt(docId) { 
+window.deleteAtt = async function(docId) { 
     try {
         await deleteDoc(doc(db, "attendanceRecords", docId));
     } catch (e) {
         alert('حدث خطأ أثناء الحذف.');
     }
+};
+
+function renderFollowUpTable() {
+    const tb = document.getElementById('followUpTableBody');
+    if(!tb) return;
+    tb.innerHTML = '';
+    deacons.forEach(d => {
+        let attCount = attendanceRecords.filter(r => r.code === d.code && (r.classStatus === 'حاضر' || r.massStatus === 'حاضر')).length;
+        let note = followUpRecords[d.code] ? followUpRecords[d.code].note : '';
+        tb.innerHTML += `<tr>
+            <td><img src="${d.photo}" class="deacon-avatar"></td>
+            <td class="ltr-text">${d.code}</td>
+            <td>${d.name}</td>
+            <td>${d.studyYear}</td>
+            <td>${attCount} مرات</td>
+            <td><input type="text" id="followNote_${d.code}" value="${note}" placeholder="ملاحظات الافتقاد..."></td>
+            <td><button class="btn-action btn-church" onclick="saveFollowUp('${d.code}')">حفظ</button></td>
+        </tr>`;
+    });
 }
+
+window.saveFollowUp = async function(code) {
+    let noteVal = document.getElementById(`followNote_${code}`).value;
+    try {
+        await setDoc(doc(db, "followUpRecords", code), { note: noteVal, updatedAt: Date.now() });
+        alert('تم حفظ ملاحظات الافتقاد!');
+    } catch (e) {
+        alert('حدث خطأ أثناء الحفظ.');
+    }
+};
 
 function renderIdCards() {
     const c = document.getElementById('idCardsContainer'); 
@@ -473,109 +545,65 @@ function renderIdCards() {
     setTimeout(() => {
         deacons.forEach(d => {
             try {
-                JsBarcode(`#barcode-${d.code}`, d.code, { format: "CODE128", height: 20, displayValue: true, fontSize: 8, margin: 0 });
-            } catch(err) {}
+                JsBarcode(`#barcode-${d.code}`, d.code, { 
+                    format: "CODE128", 
+                    height: 20, 
+                    displayValue: true, 
+                    fontSize: 8, 
+                    margin: 2 
+                });
+            } catch(e) {}
         });
     }, 100);
 }
 
-function printIdCards() { renderIdCards(); setTimeout(() => { window.print(); }, 400); }
+window.printIdCards = function() {
+    window.print();
+};
 
-function renderFollowUpTable() {
-    const tb = document.getElementById('followUpTableBody'); 
-    if(!tb) return;
-    tb.innerHTML = '';
-    deacons.forEach(d => {
-        let attCount = attendanceRecords.filter(r => r.code === d.code && (r.classStatus==='حاضر'||r.massStatus==='حاضر')).length;
-        let st = followUpRecords[d.code] ? followUpRecords[d.code].status : 'يحتاج افتقاد';
-        tb.innerHTML += `<tr><td><img src="${d.photo}" class="deacon-avatar"></td><td class="ltr-text">${d.code}</td><td>${d.name}</td><td>${d.studyYear}</td><td><b>${attCount}</b></td><td>${st}</td><td><button class="btn-action btn-success" onclick="markFollow('${d.code}')">تم</button></td></tr>`;
-    });
-}
-
-async function markFollow(code) {
-    let followData = { status: 'تم الافتقاد', date: new Date().toISOString().split('T')[0] };
-    try {
-        await setDoc(doc(db, "followUpRecords", code), followData);
-    } catch (e) {
-        alert('حدث خطأ أثناء حفظ الافتقاد.');
-    }
-}
-
-function exportTableToCSV(filename, rows) {
-    let csvContent = "\uFEFF";
-    rows.forEach(row => {
-        let rowString = row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(",");
-        csvContent += rowString + "\r\n";
-    });
-    let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+// دوال تصدير Excel
+function exportToExcel(data, fileName) {
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + data.map(e => e.join(",")).join("\n");
+    let encodedUri = encodeURI(csvContent);
     let link = document.createElement("a");
-    link.setAttribute("href", URL.createObjectURL(blob));
-    link.setAttribute("download", filename);
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `${fileName}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 }
 
-function exportDatabaseExcel() {
-    let rows = [["الكود", "الاسم", "تاريخ الميلاد", "المرحلة الدراسية", "أب الاعتراف", "الحالة", "الرتبة", "تاريخ الرسامة", "رقم الهاتف"]];
+window.exportDatabaseExcel = function() {
+    let data = [["الكود", "الاسم", "السنة الدراسية", "أب الاعتراف", "الحالة", "الرتبة", "تاريخ الرسامة", "الهاتف"]];
     deacons.forEach(d => {
-        rows.push([d.code, d.name, d.dob, d.studyYear, d.confessionFather, d.status, d.ordination, d.ordinationDate, d.phone]);
+        data.push([d.code, d.name, d.studyYear, d.confessionFather, d.status, d.ordination, d.ordinationDate, d.phone]);
     });
-    exportTableToCSV("قاعدة_بيانات_الشمامسة.csv", rows);
-}
+    exportToExcel(data, "قاعدة_بيانات_الشمامسة");
+};
 
-function exportAttendanceExcel() {
-    let rows = [["الكود", "اسم الشماس", "التاريخ", "الحصة", "القداس"]];
+window.exportAttendanceExcel = function() {
+    let data = [["الكود", "الاسم", "التاريخ", "الحصة", "القداس"]];
     attendanceRecords.forEach(r => {
         let d = deacons.find(x => x.code === r.code);
-        rows.push([r.code, d ? d.name : "غير معروف", r.date, r.classStatus, r.massStatus]);
+        data.push([r.code, d ? d.name : "غير معروف", r.date, r.classStatus, r.massStatus]);
     });
-    exportTableToCSV("سجل_الحضور_والغياب.csv", rows);
-}
+    exportToExcel(data, "سجل_الحضور");
+};
 
-function exportServiceExcel() {
-    let rows = [["الكود", "اسم الشماس", "نوع الخدمة", "التاريخ"]];
+window.exportFollowUpExcel = function() {
+    let data = [["الكود", "الاسم", "المرحلة", "ملاحظات الافتقاد"]];
+    deacons.forEach(d => {
+        let note = followUpRecords[d.code] ? followUpRecords[d.code].note : '';
+        data.push([d.code, d.name, d.studyYear, note]);
+    });
+    exportToExcel(data, "متابعة_الافتقاد");
+};
+
+window.exportServiceExcel = function() {
+    let data = [["الكود", "الاسم", "نوع الخدمة", "التاريخ"]];
     serviceRecords.forEach(s => {
         let d = deacons.find(x => x.code === s.code);
-        rows.push([s.code, d ? d.name : "غير معروف", s.serviceType, s.date]);
+        data.push([s.code, d ? d.name : "غير معروف", s.serviceType, s.date]);
     });
-    exportTableToCSV("سجل_توزيع_الخدمات.csv", rows);
-}
-
-function exportFollowUpExcel() {
-    let rows = [["الكود", "اسم الشماس", "المرحلة الدراسية", "عدد مرات الحضور", "حالة الافتقاد"]];
-    deacons.forEach(d => {
-        let attCount = attendanceRecords.filter(r => r.code === d.code && (r.classStatus==='حاضر'||r.massStatus==='حاضر')).length;
-        let st = followUpRecords[d.code] ? followUpRecords[d.code].status : 'يحتاج افتقاد';
-        rows.push([d.code, d.name, d.studyYear, attCount, st]);
-    });
-    exportTableToCSV("سجل_متابعة_الافتقاد.csv", rows);
-}
-
-// ربط الدوال بالـ window عشان تفضل شغالين مع الأزرار في الـ HTML
-window.openServantLogin = openServantLogin;
-window.closeServantLogin = closeServantLogin;
-window.openPublicRegister = openPublicRegister;
-window.closePublicRegister = closePublicRegister;
-window.checkAdminLogin = checkAdminLogin;
-window.logoutSystem = logoutSystem;
-window.togglePubOrd = togglePubOrd;
-window.toggleEditOrd = toggleEditOrd;
-window.submitPublicApplication = submitPublicApplication;
-window.switchView = switchView;
-window.approveRequest = approveRequest;
-window.rejectRequest = rejectRequest;
-window.openEditModal = openEditModal;
-window.closeEditModal = closeEditModal;
-window.saveEditedDeacon = saveEditedDeacon;
-window.deleteDeacon = deleteDeacon;
-window.assignService = assignService;
-window.deleteServiceRecord = deleteServiceRecord;
-window.processScan = processScan;
-window.deleteAtt = deleteAtt;
-window.printIdCards = printIdCards;
-window.markFollow = markFollow;
-window.exportDatabaseExcel = exportDatabaseExcel;
-window.exportAttendanceExcel = exportAttendanceExcel;
-window.exportServiceExcel = exportServiceExcel;
-window.exportFollowUpExcel = exportFollowUpExcel;
+    exportToExcel(data, "سجل_الخدمات");
+};

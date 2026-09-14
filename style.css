@@ -142,7 +142,6 @@ button:active, .btn-hero:active, .btn-nav:active, .btn-action:active {
     flex-direction: column; 
 }
 
-/* هيدر متدرج سلس بدون حواف أو حدود أو صندوق ظاهر */
 .seamless-header { 
     display: flex;
     justify-content: space-between;
@@ -171,7 +170,6 @@ button:active, .btn-hero:active, .btn-nav:active, .btn-action:active {
     border-radius: 8px;
 }
 
-/* الأزرار مرنة وموزعة بدون كونتينر أو تمرير أفقي */
 .nav-buttons-fluid {
     display: flex;
     flex-wrap: wrap;
@@ -222,7 +220,6 @@ table { width: 100%; border-collapse: collapse; font-size: 13.5px; background: #
 th, td { border: 1px solid #e2d2b5; padding: 10px; text-align: center; vertical-align: middle; }
 th { background-color: var(--church-brown); color: #fff; font-family: 'Amiri', serif; }
 
-/* لون هيدر جدول الافتقاد المميز والمتناسق مع الصفحة */
 .follow-up-header th {
     background-color: #5c3a21 !important;
     color: #fbf7f0 !important;
@@ -232,7 +229,6 @@ th { background-color: var(--church-brown); color: #fff; font-family: 'Amiri', s
 tr:hover { background-color: #fdfaf5; }
 .deacon-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 1px solid var(--church-gold); }
 
-/* تنسيق الكارنيهات والطباعة */
 .id-cards-grid { 
     display: grid; 
     grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); 
@@ -296,7 +292,6 @@ tr:hover { background-color: #fdfaf5; }
     margin: 0 auto; 
 }
 
-/* توقيع SOKRAT المتحرك النيون في أسفل الصفحة */
 .sokrat-footer {
     text-align: center;
     padding: 25px 0 10px 0;
