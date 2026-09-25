@@ -27,9 +27,21 @@ const studyYearsHierarchy = [
     "أولى ثانوي", "تانية ثانوي", "تالتة ثانوي", "جامعي"
 ];
 
+function sortDeaconsByCode(arr) {
+    return arr.sort((a, b) => {
+        let numA = parseFloat(a.code);
+        let numB = parseFloat(b.code);
+        if (!isNaN(numA) && !isNaN(numB)) {
+            return numA - numB;
+        }
+        return a.code.localeCompare(b.code, 'ar', { numeric: true });
+    });
+}
+
 function initRealtimeListeners() {
     onSnapshot(collection(db, "deacons"), (snapshot) => {
         deacons = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        sortDeaconsByCode(deacons);
         renderAllData();
     });
 
@@ -57,36 +69,12 @@ function initRealtimeListeners() {
     });
 }
 
-function checkNairouzPromotion() {
-    let now = new Date();
-    let currentYear = now.getFullYear();
-    let nairouzDateStr = `${currentYear}-09-11`; 
-    let lastCheckedYear = localStorage.getItem('lastNairouzPromotionYear');
-
-    if(now >= new Date(nairouzDateStr) && lastCheckedYear !== String(currentYear)) {
-        deacons.forEach(async (d) => {
-            let currentIndex = studyYearsHierarchy.indexOf(d.studyYear);
-            if(currentIndex !== -1 && currentIndex < studyYearsHierarchy.length - 1) {
-                d.studyYear = studyYearsHierarchy[currentIndex + 1];
-                if(d.id) {
-                    await updateDoc(doc(db, "deacons", d.id), { studyYear: d.studyYear });
-                }
-            } else if(currentIndex === studyYearsHierarchy.length - 1) {
-                d.studyYear = "جامعي";
-            }
-        });
-        localStorage.setItem('lastNairouzPromotionYear', String(currentYear));
-    }
-}
-
-checkNairouzPromotion();
 initRealtimeListeners();
 
-const ADMIN_PASS = "2864";
+const ADMIN_PASS = "5654";
 const attendDateInput = document.getElementById('attenddate');
 if(attendDateInput) attendDateInput.valueAsDate = new Date();
 
-// دوال التحكم بالواجهة
 window.openServantLogin = function() { 
     document.getElementById('welcomeHomeOverlay').style.display = 'none'; 
     document.getElementById('loginOverlay').style.display = 'flex';
@@ -167,7 +155,7 @@ async function saveReq(name, dob, studyYear, confessionFather, status, ordinatio
         alert('تم إرسال الطلب بنجاح!'); 
         window.closePublicRegister();
     } catch (error) {
-        alert('حدث خطأ أثناء إرسال الطلب، تأكد من الاتصال بالإنترنت.');
+        alert('حدث خطأ أثناء إرسال الطلب.');
     }
 }
 
@@ -259,7 +247,11 @@ window.renderMainDatabase = function() {
     const tb = document.getElementById('deaconsMainTable'); 
     if(!tb) return;
     tb.innerHTML = '';
-    deacons.filter(d => d.name.toLowerCase().includes(q) || d.code.toLowerCase().includes(q) || d.phone.includes(q)).forEach(d => {
+    
+    let filtered = deacons.filter(d => d.name.toLowerCase().includes(q) || d.code.toLowerCase().includes(q) || d.phone.includes(q));
+    sortDeaconsByCode(filtered);
+
+    filtered.forEach(d => {
         tb.innerHTML += `<tr>
             <td><img src="${d.photo}" class="deacon-avatar"></td>
             <td><b class="ltr-text">${d.code}</b></td>
@@ -351,7 +343,11 @@ window.renderServiceDeaconsList = function() {
     const tb = document.getElementById('serviceDeaconsTableBody'); 
     if(!tb) return;
     tb.innerHTML = '';
-    deacons.filter(d => d.studyYear === year).forEach(d => {
+    
+    let filtered = deacons.filter(d => d.studyYear === year);
+    sortDeaconsByCode(filtered);
+
+    filtered.forEach(d => {
         tb.innerHTML += `<tr>
             <td><img src="${d.photo}" class="deacon-avatar"></td>
             <td class="ltr-text">${d.code}</td>
@@ -401,7 +397,6 @@ window.deleteServiceRecord = async function(docId) {
     }
 };
 
-// --- كاميرا الموبايل لمسح الكود تلقائياً ---
 window.startScanner = function() {
     const readerDiv = document.getElementById('reader');
     readerDiv.style.display = 'block';
@@ -411,20 +406,15 @@ window.startScanner = function() {
     
     html5QrCode.start(
         { facingMode: "environment" }, 
-        {
-            fps: 10,
-            qrbox: { width: 250, height: 100 }
-        },
+        { fps: 10, qrbox: { width: 250, height: 100 } },
         (decodedText) => {
             const scanInput = document.getElementById('scanInput');
-            if(scanInput) {
-                scanInput.value = decodedText;
-            }
+            if(scanInput) { scanInput.value = decodedText; }
             window.stopScanner();
         },
         (errorMessage) => {}
     ).catch((err) => {
-        alert("فشل تشغيل الكاميرا، تأكد من إعطاء الصلاحية للموقع في المتصفح: " + err);
+        alert("فشل تشغيل الكاميرا: " + err);
     });
 };
 
@@ -433,9 +423,7 @@ window.stopScanner = function() {
         html5QrCode.stop().then(() => {
             document.getElementById('reader').style.display = 'none';
             document.getElementById('stopScannerBtn').style.display = 'none';
-        }).catch((err) => {
-            console.error(err);
-        });
+        }).catch((err) => {});
     }
 };
 
@@ -476,7 +464,10 @@ function renderAttendanceTable() {
     const tb = document.getElementById('attendanceTableBody'); 
     if(!tb) return;
     tb.innerHTML = '';
-    attendanceRecords.forEach((r) => {
+    
+    let sortedAttendance = [...attendanceRecords].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    sortedAttendance.forEach((r) => {
         let d = deacons.find(x => x.code === r.code);
         tb.innerHTML += `<tr><td class="ltr-text">${r.code}</td><td>${d?d.name:'غير معروف'}</td><td>${r.date}</td><td>${r.classStatus}</td><td>${r.massStatus}</td><td><button class="btn-action btn-danger" onclick="deleteAtt('${r.id}')">حذف</button></td></tr>`;
     });
@@ -494,28 +485,104 @@ function renderFollowUpTable() {
     const tb = document.getElementById('followUpTableBody');
     if(!tb) return;
     tb.innerHTML = '';
-    deacons.forEach(d => {
+    
+    let sortedDeacons = [...deacons];
+    sortDeaconsByCode(sortedDeacons);
+
+    sortedDeacons.forEach(d => {
         let attCount = attendanceRecords.filter(r => r.code === d.code && (r.classStatus === 'حاضر' || r.massStatus === 'حاضر')).length;
-        let note = followUpRecords[d.code] ? followUpRecords[d.code].note : '';
+        let followData = followUpRecords[d.code];
+        
+        let statusText = `<span style="color: #c0392b;">لم يتم الافتقاد</span>`;
+        if (followData) {
+            let parts = [];
+            if (followData.lastVisited) parts.push(`<span style="color: #27ae60; font-weight: bold;">آخر افتقاد: ${followData.lastVisited}</span>`);
+            if (followData.excuse) parts.push(`<span style="color: #2980b9; font-weight: bold;">العذر: ${followData.excuse}</span>`);
+            if (parts.length > 0) statusText = parts.join('<br>');
+        }
+
         tb.innerHTML += `<tr>
             <td><img src="${d.photo}" class="deacon-avatar"></td>
             <td class="ltr-text">${d.code}</td>
             <td>${d.name}</td>
             <td>${d.studyYear}</td>
             <td>${attCount} مرات</td>
-            <td><input type="text" id="followNote_${d.code}" value="${note}" placeholder="ملاحظات الافتقاد..."></td>
-            <td><button class="btn-action btn-church" onclick="saveFollowUp('${d.code}')">حفظ</button></td>
+            <td>${statusText}</td>
+            <td>
+                <div style="display: flex; gap: 5px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                    <button class="btn-action btn-church" style="padding: 6px 10px;" onclick="markFollowUp('${d.code}')" title="تم الافتقاد">الافتقاد</button>
+                    <button class="btn-action" style="background: #27ae60; color: white; padding: 6px 10px;" onclick="callDeaconPhone('${d.phone}')" title="الاتصال بالهاتف">📞</button>
+                    <button class="btn-action" style="background: #e67e22; color: white; padding: 6px 10px;" onclick="openExcuseModal('${d.code}', '${d.name}')" title="كتابة عذر">عذر</button>
+                    <button class="btn-action btn-danger" style="padding: 6px 10px;" onclick="deleteFollowUp('${d.code}')" title="حذف سجل الافتقاد">حذف</button>
+                </div>
+            </td>
         </tr>`;
     });
 }
 
-window.saveFollowUp = async function(code) {
-    let noteVal = document.getElementById(`followNote_${code}`).value;
+window.markFollowUp = async function(code) {
+    let now = new Date();
+    let dateStr = now.toISOString().split('T')[0] + ' ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     try {
-        await setDoc(doc(db, "followUpRecords", code), { note: noteVal, updatedAt: Date.now() });
-        alert('تم حفظ ملاحظات الافتقاد!');
+        let current = followUpRecords[code] || {};
+        current.lastVisited = dateStr;
+        current.updatedAt = Date.now();
+        await setDoc(doc(db, "followUpRecords", code), current);
+        alert('تم تسجيل الافتقاد بنجاح!');
     } catch (e) {
-        alert('حدث خطأ أثناء الحفظ.');
+        alert('حدث خطأ أثناء حفظ الافتقاد.');
+    }
+};
+
+window.callDeaconPhone = function(phone) {
+    if(!phone) { alert('لا يوجد رقم هاتف مسجل لهذا الشماس!'); return; }
+    navigator.clipboard.writeText(phone).then(() => {
+        alert(`تم نسخ رقم الهاتف (${phone}) إلى الحافظة بنجاح! يمكنك لصقه الآن في الاتصال.`);
+        // محاولة فتح تطبيق الاتصال مباشرة
+        window.location.href = `tel:${phone}`;
+    }).catch(err => {
+        window.location.href = `tel:${phone}`;
+    });
+};
+
+window.openExcuseModal = function(code, name) {
+    document.getElementById('excuseDeaconCode').value = code;
+    document.getElementById('excuseDeaconName').innerText = `الشماس: ${name}`;
+    let current = followUpRecords[code];
+    document.getElementById('excuseReasonText').value = (current && current.excuse) ? current.excuse : '';
+    document.getElementById('excuseModal').style.display = 'flex';
+    setTimeout(() => { document.getElementById('excuseReasonText').focus(); }, 100);
+};
+
+window.closeExcuseModal = function() {
+    document.getElementById('excuseModal').style.display = 'none';
+};
+
+window.saveDeaconExcuse = async function() {
+    let code = document.getElementById('excuseDeaconCode').value;
+    let excuseText = document.getElementById('excuseReasonText').value.trim();
+    if(!excuseText) { alert('يرجى كتابة العذر أولاً!'); return; }
+
+    try {
+        let current = followUpRecords[code] || {};
+        current.excuse = excuseText;
+        current.updatedAt = Date.now();
+        await setDoc(doc(db, "followUpRecords", code), current);
+        window.closeExcuseModal();
+        alert('تم حفظ العذر بنجاح!');
+    } catch (e) {
+        alert('حدث خطأ أثناء حفظ العذر.');
+    }
+};
+
+window.deleteFollowUp = async function(code) {
+    if(confirm('هل تريد مسح سجل الافتقاد والعذر لهذا الشماس؟')) {
+        try {
+            await deleteDoc(doc(db, "followUpRecords", code));
+            alert('تم الحذف بنجاح!');
+        } catch (e) {
+            alert('حدث خطأ أثناء الحذف.');
+        }
     }
 };
 
@@ -523,7 +590,11 @@ function renderIdCards() {
     const c = document.getElementById('idCardsContainer'); 
     if(!c) return;
     c.innerHTML = '';
-    deacons.forEach(d => {
+    
+    let sortedDeacons = [...deacons];
+    sortDeaconsByCode(sortedDeacons);
+
+    sortedDeacons.forEach(d => {
         c.innerHTML += `
             <div class="id-card">
                 <h4>خدمة الشهيد كيرياكوس</h4>
@@ -543,7 +614,7 @@ function renderIdCards() {
     });
 
     setTimeout(() => {
-        deacons.forEach(d => {
+        sortedDeacons.forEach(d => {
             try {
                 JsBarcode(`#barcode-${d.code}`, d.code, { 
                     format: "CODE128", 
@@ -561,7 +632,6 @@ window.printIdCards = function() {
     window.print();
 };
 
-// دوال تصدير Excel
 function exportToExcel(data, fileName) {
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + data.map(e => e.join(",")).join("\n");
     let encodedUri = encodeURI(csvContent);
@@ -575,7 +645,9 @@ function exportToExcel(data, fileName) {
 
 window.exportDatabaseExcel = function() {
     let data = [["الكود", "الاسم", "السنة الدراسية", "أب الاعتراف", "الحالة", "الرتبة", "تاريخ الرسامة", "الهاتف"]];
-    deacons.forEach(d => {
+    let sorted = [...deacons];
+    sortDeaconsByCode(sorted);
+    sorted.forEach(d => {
         data.push([d.code, d.name, d.studyYear, d.confessionFather, d.status, d.ordination, d.ordinationDate, d.phone]);
     });
     exportToExcel(data, "قاعدة_بيانات_الشمامسة");
@@ -583,7 +655,8 @@ window.exportDatabaseExcel = function() {
 
 window.exportAttendanceExcel = function() {
     let data = [["الكود", "الاسم", "التاريخ", "الحصة", "القداس"]];
-    attendanceRecords.forEach(r => {
+    let sortedAttendance = [...attendanceRecords].sort((a, b) => new Date(a.date) - new Date(b.date));
+    sortedAttendance.forEach(r => {
         let d = deacons.find(x => x.code === r.code);
         data.push([r.code, d ? d.name : "غير معروف", r.date, r.classStatus, r.massStatus]);
     });
@@ -591,12 +664,16 @@ window.exportAttendanceExcel = function() {
 };
 
 window.exportFollowUpExcel = function() {
-    let data = [["الكود", "الاسم", "المرحلة", "ملاحظات الافتقاد"]];
-    deacons.forEach(d => {
-        let note = followUpRecords[d.code] ? followUpRecords[d.code].note : '';
-        data.push([d.code, d.name, d.studyYear, note]);
+    let data = [["الكود", "الاسم", "المرحلة", "آخر تاريخ افتقاد", "العذر"]];
+    let sorted = [...deacons];
+    sortDeaconsByCode(sorted);
+    sorted.forEach(d => {
+        let followData = followUpRecords[d.code];
+        let lastVisit = followData && followData.lastVisited ? followData.lastVisited : 'لم يتم الافتقاد';
+        let excuse = followData && followData.excuse ? followData.excuse : 'لا يوجد';
+        data.push([d.code, d.name, d.studyYear, lastVisit, excuse]);
     });
-    exportToExcel(data, "متابعة_الافتقاد");
+    exportToExcel(data, "متابعة_الافتقاد_والعذار");
 };
 
 window.exportServiceExcel = function() {
