@@ -6,19 +6,26 @@
     --text-dark: #2c221e;
     --accent-red: #8b0000;
     --success-green: #2e7d32;
+
+    --bg-body: var(--light-cream);
+    --bg-card: var(--card-bg);
+    --bg-table: #ffffff;
+    --text-main: var(--text-dark);
+    --border-soft: #e2d2b5;
 }
 
 * { box-sizing: border-box; }
 
 body { 
     font-family: 'Cairo', sans-serif; 
-    background-color: var(--light-cream); 
-    color: var(--text-dark); 
+    background-color: var(--bg-body); 
+    color: var(--text-main); 
     margin: 0; 
     padding: 0; 
     width: 100%; 
     min-height: 100vh; 
     direction: rtl;
+    transition: background-color 0.4s ease, color 0.4s ease;
 }
 
 .ltr-text {
@@ -26,6 +33,383 @@ body {
     unicode-bidi: embed;
     text-align: left;
 }
+
+/* ==================================================================
+   1) الإشعارات الذكية الفريدة — The Mystic Toast
+   ================================================================== */
+.toast-container {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 999999;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    pointer-events: none;
+    max-width: calc(100% - 32px);
+}
+
+.mystic-toast {
+    pointer-events: auto;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 320px;
+    max-width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(28, 19, 12, 0.92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--church-gold);
+    border-inline-start: 3px solid var(--church-gold);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    color: #fbf7f0;
+    font-weight: 600;
+    font-size: 13.5px;
+    opacity: 0;
+    transform: translateX(24px);
+    transition: opacity 0.18s ease-out, transform 0.18s ease-out;
+}
+
+.mystic-toast.toast-show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.mystic-toast.toast-hide {
+    opacity: 0;
+    transform: translateX(24px) scale(0.97);
+    transition: opacity 0.2s ease-in, transform 0.2s ease-in;
+}
+
+.mystic-toast.toast-shake.toast-show {
+    animation: toastShake 0.4s ease;
+}
+
+@keyframes toastShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    50% { transform: translateX(4px); }
+    75% { transform: translateX(-3px); }
+}
+
+.mystic-toast-success {
+    border-inline-start-color: var(--church-gold);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 14px rgba(255,215,0,0.25);
+}
+
+.mystic-toast-error {
+    border-color: #c0392b;
+    border-inline-start-color: #e74c3c;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 14px rgba(192,57,43,0.3);
+}
+
+.toast-icon {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12.5px;
+}
+
+.mystic-toast-success .toast-icon {
+    background: radial-gradient(circle, #ffd700, #b8860b);
+    color: #2c221e;
+    text-shadow: none;
+}
+
+.mystic-toast-error .toast-icon {
+    background: radial-gradient(circle, #e74c3c, #8b0000);
+    color: #fff;
+}
+
+.toast-message {
+    flex: 1;
+    line-height: 1.4;
+}
+
+.toast-timer {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    transform: rotate(-90deg);
+}
+
+.toast-timer-bg {
+    fill: none;
+    stroke: rgba(255,255,255,0.15);
+    stroke-width: 3;
+}
+
+.toast-timer-fg {
+    fill: none;
+    stroke: var(--church-gold);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 97.4;
+    stroke-dashoffset: 0;
+    animation-name: toastCountdown;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+}
+
+.mystic-toast-error .toast-timer-fg {
+    stroke: #e74c3c;
+}
+
+@keyframes toastCountdown {
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: 97.4; }
+}
+
+/* ==================================================================
+   2) شاشة التحميل — The Golden Sanctuary Loader
+   ================================================================== */
+.golden-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999999;
+    background: radial-gradient(ellipse at center, #241309 0%, #140b06 65%, #0c0704 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+.golden-loader.loader-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.loader-stage {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loader-glow-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid rgba(184,134,11,0.35);
+    box-shadow: 0 0 32px rgba(184,134,11,0.25), inset 0 0 32px rgba(184,134,11,0.15);
+    animation: loaderRingPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes loaderRingPulse {
+    0%, 100% { transform: scale(0.94); opacity: 0.6; }
+    50% { transform: scale(1.04); opacity: 1; }
+}
+
+.loader-icon-wrap {
+    position: relative;
+    width: 172px;
+    height: 172px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid var(--church-gold);
+    background: #1a0f08;
+    box-shadow: 0 0 25px rgba(255,215,0,0.25);
+    padding: 10px;
+}
+
+.loader-icon-img {
+    position: absolute;
+    inset: 10px;
+    width: calc(100% - 20px);
+    height: calc(100% - 20px);
+    border-radius: 50%;
+    object-fit: contain;
+    filter: brightness(0.32) saturate(0.9);
+    transition: filter 0.6s ease;
+}
+
+/* قناع النور اللي بيتعبى تدريجيًا من تحت لفوق فوق الصورة */
+.loader-fill-mask {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 0%;
+    background: linear-gradient(180deg, rgba(255,215,0,0.05) 0%, rgba(255,215,0,0.55) 55%, rgba(255,190,60,0.9) 100%);
+    mix-blend-mode: screen;
+    animation: loaderFillUp 2.6s ease-in-out infinite;
+}
+
+@keyframes loaderFillUp {
+    0% { height: 0%; opacity: 0.4; }
+    50% { height: 100%; opacity: 1; }
+    100% { height: 0%; opacity: 0.4; }
+}
+
+.loader-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--church-gold);
+    font-family: 'Amiri', serif;
+    font-size: 17px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 12px rgba(184,134,11,0.5);
+}
+
+.loader-dots { display: inline-flex; gap: 4px; }
+.loader-dots i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--church-gold);
+    display: inline-block;
+    animation: loaderDotBounce 1.2s infinite ease-in-out;
+    box-shadow: 0 0 8px rgba(255,215,0,0.6);
+}
+.loader-dots i:nth-child(2) { animation-delay: 0.15s; }
+.loader-dots i:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes loaderDotBounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+    40% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ==================================================================
+   3) الوضع الليلي السينمائي — Ripple Dark Mode
+   ================================================================== */
+.dark-mode-btn {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1.5px solid var(--church-gold);
+    background: linear-gradient(135deg, #3d2314, #2c221e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25), 0 0 10px rgba(184,134,11,0.25);
+    z-index: 20;
+    padding: 0;
+}
+
+#darkModeToggleInner.dark-mode-btn {
+    position: static;
+}
+
+.dm-icon {
+    width: 22px;
+    height: 22px;
+}
+
+.dm-sun-group {
+    transform-origin: center;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.dm-sun {
+    fill: #ffd700;
+    stroke: none;
+    filter: drop-shadow(0 0 3px rgba(255,215,0,0.7));
+}
+
+.dm-ray {
+    stroke: #ffd700;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 2px rgba(255,215,0,0.6));
+}
+
+.dm-moon {
+    fill: #ffd700;
+    opacity: 0;
+    transform: scale(0.6);
+    transform-origin: center;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+body.dark-mode .dm-sun-group {
+    opacity: 0;
+    transform: scale(0.4) rotate(90deg);
+}
+body.dark-mode .dm-moon {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+}
+
+.ripple-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    border-radius: 50%;
+    background: radial-gradient(circle at center, #16110c 0%, #0b0806 100%);
+    z-index: 999998;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+}
+
+.ripple-overlay.ripple-active {
+    transition: transform 0.75s cubic-bezier(.4,0,.2,1);
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+.ripple-overlay.ripple-reverse {
+    transition: transform 0.75s cubic-bezier(.4,0,.2,1), opacity 0.1s linear 0.7s;
+    transform: translate(-50%, -50%) scale(0);
+}
+
+body.dark-mode {
+    --bg-body: #17100a;
+    --bg-card: #241a12;
+    --bg-table: #1f1610;
+    --text-main: #f0e4d0;
+    --border-soft: #4a3a22;
+}
+
+body.dark-mode .view,
+body.dark-mode .welcome-card,
+body.dark-mode .large-modal-card {
+    background: var(--bg-card);
+    border-color: rgba(184,134,11,0.35);
+}
+
+body.dark-mode table { background: var(--bg-table); color: var(--text-main); }
+body.dark-mode th { background-color: #241a12; }
+body.dark-mode td { border-color: var(--border-soft); }
+body.dark-mode tr:hover { background-color: #2a1f15; }
+body.dark-mode input, body.dark-mode select, body.dark-mode textarea {
+    background-color: #1f1610;
+    color: var(--text-main);
+    border-color: rgba(184,134,11,0.5);
+}
+body.dark-mode .seamless-header {
+    background: linear-gradient(180deg, rgba(23,16,10,0.95), rgba(20,13,8,0.85));
+}
+body.dark-mode label { color: #e8c977; }
+
+body.dark-mode .welcome-card h2,
+body.dark-mode .seamless-header h2,
+body.dark-mode .wide-form-card h2,
+body.dark-mode .large-modal-card h2 {
+    color: #f3dfa9;
+    text-shadow: 0 0 14px rgba(243,223,169,0.25);
+}
+body.dark-mode .welcome-subtitle { color: #cbb98a; }
+body.dark-mode .view h3 { color: #f3dfa9; }
 
 .hero-overlay { 
     position: fixed; 
@@ -50,6 +434,7 @@ body {
     max-width: 480px; 
     border: 3px solid var(--church-gold); 
     box-shadow: 0 15px 40px rgba(0,0,0,0.4); 
+    position: relative;
 }
 
 .welcome-card img.logo-img { 
@@ -110,33 +495,65 @@ button:active, .btn-hero:active, .btn-nav:active, .btn-action:active {
     left: 0; 
     width: 100vw; 
     height: 100vh; 
-    background: rgba(44, 34, 30, 0.75); 
+    background: rgba(20, 13, 8, 0.6); 
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     display: flex; 
     justify-content: center; 
     align-items: center; 
     z-index: 10000; 
     overflow-y: auto; 
     padding: 15px; 
+    animation: modalOverlayFade 0.25s ease;
+}
+
+@keyframes modalOverlayFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .large-modal-card { 
-    background: var(--card-bg); 
+    position: relative;
+    background: var(--bg-card); 
     width: 100%; 
     max-width: 450px; 
-    padding: 30px; 
-    border-radius: 16px; 
-    border: 2px solid var(--church-gold); 
+    padding: 34px 30px 30px; 
+    border-radius: 22px; 
+    border: 1px solid rgba(184,134,11,0.4); 
     text-align: center; 
+    box-shadow: 0 25px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(184,134,11,0.06);
+    animation: modalCardPop 0.3s cubic-bezier(.2,.8,.3,1.15);
 }
 
-.wide-form-card { max-width: 750px; text-align: right; max-height: 90vh; overflow-y: auto; }
+@keyframes modalCardPop {
+    from { opacity: 0; transform: scale(0.94) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.large-modal-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 4px;
+    border-radius: 0 0 6px 6px;
+    background: linear-gradient(90deg, var(--church-gold), #ffd700, var(--church-gold));
+}
+
+.large-modal-card h2 {
+    font-size: 19px;
+    letter-spacing: 0.3px;
+}
+
+.wide-form-card { max-width: 760px; text-align: right; max-height: 90vh; overflow-y: auto; }
 .wide-form-card h2 { text-align: center; color: var(--church-brown); font-family: 'Amiri', serif; }
-.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
 
 .container { 
     width: 100%; 
     min-height: 100vh; 
-    background: var(--light-cream); 
+    background: var(--bg-body); 
     padding: 15px 25px; 
     display: flex; 
     flex-direction: column; 
@@ -198,14 +615,35 @@ button:active, .btn-hero:active, .btn-nav:active, .btn-action:active {
 .btn-nav.active-btn { background-color: var(--church-gold); }
 
 .views-container { flex: 1; width: 100%; max-width: 1350px; margin: 0 auto; }
-.view { background: var(--card-bg); padding: 25px; border-radius: 14px; border: 1px solid rgba(184, 134, 11, 0.3); display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+.view { background: var(--bg-card); padding: 25px; border-radius: 14px; border: 1px solid rgba(184, 134, 11, 0.3); display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
 .view.active { display: block; }
 .view h3 { color: var(--church-brown); font-family: 'Amiri', serif; margin-bottom: 15px; }
 
-.form-group { margin-bottom: 15px; text-align: right; }
-label { display: block; font-weight: bold; margin-bottom: 6px; color: var(--church-brown); font-size: 13.5px; }
-input, select { width: 100%; padding: 10px; border: 1px solid var(--church-gold); border-radius: 8px; background-color: var(--light-cream); font-size: 14.5px; outline: none; }
-input:focus, select:focus { border-color: var(--church-brown); box-shadow: 0 0 5px rgba(184,134,11,0.4); }
+.form-group { margin-bottom: 4px; text-align: right; }
+label { display: block; font-weight: 700; margin-bottom: 7px; color: var(--church-gold); font-size: 12px; letter-spacing: 0.4px; text-transform: uppercase; opacity: 0.9; }
+input, select, textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid transparent;
+    border-radius: 12px;
+    background-color: rgba(184,134,11,0.07);
+    font-size: 14.5px;
+    outline: none;
+    font-family: 'Cairo', sans-serif;
+    color: var(--text-main);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+input:focus, select:focus, textarea:focus {
+    border-color: var(--church-gold);
+    background-color: rgba(184,134,11,0.03);
+    box-shadow: 0 0 0 4px rgba(184,134,11,0.15);
+}
+body.dark-mode input, body.dark-mode select, body.dark-mode textarea {
+    background-color: rgba(184,134,11,0.1);
+}
+body.dark-mode input:focus, body.dark-mode select:focus, body.dark-mode textarea:focus {
+    background-color: rgba(184,134,11,0.06);
+}
 
 .btn-action { padding: 8px 16px; border: none; border-radius: 8px; font-weight: bold; font-size: 13.5px; }
 .btn-primary { background-color: var(--church-brown); color: #fff; }
@@ -215,9 +653,44 @@ input:focus, select:focus { border-color: var(--church-brown); box-shadow: 0 0 5
 .btn-export { background-color: #27ae60; color: #fff; }
 .btn-secondary-back { background-color: #7f8c8d; color: #fff; }
 
+/* ==================================================================
+   5) البحث الذكي والفلترة — Live Search & Filter Chips
+   ================================================================== */
+.filter-chips-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.filter-chip {
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1.5px solid var(--church-gold);
+    background: transparent;
+    color: var(--church-brown);
+    font-size: 12.5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+body.dark-mode .filter-chip { color: #e8c977; }
+
+.filter-chip:hover {
+    background: rgba(184,134,11,0.12);
+    transform: translateY(-1px);
+}
+
+.filter-chip.active-chip {
+    background: var(--church-gold);
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(184,134,11,0.4);
+}
+
 .table-responsive { overflow-x: auto; margin-top: 15px; width: 100%; }
 table { width: 100%; border-collapse: collapse; font-size: 13.5px; background: #fff; white-space: nowrap; }
-th, td { border: 1px solid #e2d2b5; padding: 10px; text-align: center; vertical-align: middle; }
+th, td { border: 1px solid var(--border-soft); padding: 10px; text-align: center; vertical-align: middle; }
 th { background-color: var(--church-brown); color: #fff; font-family: 'Amiri', serif; }
 
 .follow-up-header th {
@@ -227,8 +700,27 @@ th { background-color: var(--church-brown); color: #fff; font-family: 'Amiri', s
 }
 
 tr:hover { background-color: #fdfaf5; }
+
+/* صف يظهر تدريجيًا عند نتيجة بحث/فلترة جديدة */
+table tbody tr {
+    animation: rowFadeIn 0.25s ease;
+}
+@keyframes rowFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.no-results-row td {
+    padding: 25px;
+    color: #999;
+    font-style: italic;
+}
+
 .deacon-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 1px solid var(--church-gold); }
 
+/* ==================================================================
+   4) الكارنيهات — بدون كود أو مرحلة ظاهرة
+   ================================================================== */
 .id-cards-grid { 
     display: grid; 
     grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); 
@@ -237,57 +729,83 @@ tr:hover { background-color: #fdfaf5; }
 }
 
 .id-card { 
-    width: 310px; 
-    height: 195px; 
+    width: 320px; 
+    height: 215px; 
     background: linear-gradient(135deg, #3d2314, #2c221e); 
     border: 2px solid var(--church-gold); 
-    border-radius: 12px; 
-    padding: 10px; 
+    border-radius: 14px; 
+    padding: 14px 16px; 
     color: #fff; 
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    align-items: stretch;
+    gap: 10px;
     margin: 10px auto; 
     page-break-inside: avoid;
     box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    overflow: hidden;
 }
 
 .id-card h4 { 
-    margin: 0 0 4px 0; 
+    margin: 0; 
     color: var(--church-gold); 
     text-align: center; 
     font-family: 'Amiri', serif; 
-    font-size: 13.5px; 
-    border-bottom: 1px solid var(--church-gold);
-    padding-bottom: 3px;
+    font-size: 14px; 
+    border-bottom: 1px solid rgba(184,134,11,0.5);
+    padding-bottom: 8px;
+    width: 100%;
+    flex-shrink: 0;
 }
 
-.id-card .card-body { 
+.id-card .card-body-row { 
     display: flex; 
-    gap: 10px; 
+    flex-direction: row;
+    gap: 14px; 
     align-items: center; 
-    margin-top: 4px; 
+    flex: 1;
+    min-height: 0;
 }
 
-.id-card img.card-img { 
-    width: 55px; 
-    height: 65px; 
-    border-radius: 6px; 
+.id-card img.card-img-side { 
+    width: 72px; 
+    height: 88px; 
+    border-radius: 8px; 
     object-fit: cover; 
-    border: 1px solid var(--church-gold); 
+    border: 1.5px solid var(--church-gold); 
+    flex-shrink: 0;
+}
+
+.id-card .card-info {
+    flex: 1;
+    text-align: right;
+}
+
+.id-card .card-name-line {
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 0.3px;
+    line-height: 1.5;
+}
+
+.id-card .card-label {
+    color: var(--church-gold);
+    font-weight: bold;
+    margin-left: 4px;
 }
 
 .id-card .barcode-box { 
     text-align: center; 
-    margin-top: 4px; 
     background: #fff; 
-    padding: 2px; 
-    border-radius: 4px; 
+    padding: 4px 4px 2px; 
+    border-radius: 6px; 
+    width: 100%;
+    flex-shrink: 0;
 }
 
 .id-card .barcode-box svg { 
     width: 100%; 
-    height: 22px; 
+    height: 36px; 
     display: block; 
     margin: 0 auto; 
 }
@@ -347,4 +865,6 @@ tr:hover { background-color: #fdfaf5; }
     .welcome-card { padding: 25px 15px; }
     .nav-buttons-fluid { justify-content: stretch; }
     .btn-nav { flex: 1; justify-content: center; min-width: 130px; }
+    .dark-mode-btn { top: 10px; left: 10px; width: 36px; height: 36px; }
+    #darkModeToggleInner.dark-mode-btn { position: static; margin: 0 auto; }
 }

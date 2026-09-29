@@ -12,7 +12,44 @@
 </head>
 <body>
 
+    <!-- ============ شاشة التحميل: المذبح الذهبي المقدس ============ -->
+    <div id="goldenLoader" class="golden-loader">
+        <div class="loader-stage">
+            <div class="loader-glow-ring"></div>
+            <div class="loader-icon-wrap">
+                <img src="logoicon.jpg" alt="شعار الكنيسة" class="loader-icon-img">
+                <div class="loader-fill-mask"></div>
+            </div>
+        </div>
+        <div class="loader-text">
+            <span>جاري إعداد الموقع</span>
+            <span class="loader-dots"><i></i><i></i><i></i></span>
+        </div>
+    </div>
+
+    <!-- ============ حاوية الإشعارات الذكية ============ -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- ============ ستارة الليل السينمائية ============ -->
+    <div id="rippleOverlay" class="ripple-overlay"></div>
+
     <div id="welcomeHomeOverlay" class="hero-overlay">
+        <button id="darkModeToggle" class="dark-mode-btn" title="الوضع الليلي" onclick="toggleDarkMode(event)">
+            <svg class="dm-icon" viewBox="0 0 24 24">
+                <g class="dm-sun-group">
+                    <circle class="dm-sun" cx="12" cy="12" r="4.2"></circle>
+                    <line class="dm-ray" x1="12" y1="1.5" x2="12" y2="3.8"></line>
+                    <line class="dm-ray" x1="12" y1="20.2" x2="12" y2="22.5"></line>
+                    <line class="dm-ray" x1="1.5" y1="12" x2="3.8" y2="12"></line>
+                    <line class="dm-ray" x1="20.2" y1="12" x2="22.5" y2="12"></line>
+                    <line class="dm-ray" x1="4.4" y1="4.4" x2="6.1" y2="6.1"></line>
+                    <line class="dm-ray" x1="17.9" y1="17.9" x2="19.6" y2="19.6"></line>
+                    <line class="dm-ray" x1="4.4" y1="19.6" x2="6.1" y2="17.9"></line>
+                    <line class="dm-ray" x1="17.9" y1="6.1" x2="19.6" y2="4.4"></line>
+                </g>
+                <path class="dm-moon" d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"></path>
+            </svg>
+        </button>
         <div class="welcome-card">
             <img src="logoicon.jpg" alt="صورة الخدمة" class="logo-img">
             <h2>خدمة الشهيد كيرياكوس</h2>
@@ -115,7 +152,22 @@
 
     <div id="mainPlatform" class="container" style="display: none;">
         <header class="seamless-header">
-            <div class="header-placeholder"></div>
+            <button id="darkModeToggleInner" class="dark-mode-btn" title="الوضع الليلي" onclick="toggleDarkMode(event)">
+                <svg class="dm-icon" viewBox="0 0 24 24">
+                    <g class="dm-sun-group">
+                        <circle class="dm-sun" cx="12" cy="12" r="4.2"></circle>
+                        <line class="dm-ray" x1="12" y1="1.5" x2="12" y2="3.8"></line>
+                        <line class="dm-ray" x1="12" y1="20.2" x2="12" y2="22.5"></line>
+                        <line class="dm-ray" x1="1.5" y1="12" x2="3.8" y2="12"></line>
+                        <line class="dm-ray" x1="20.2" y1="12" x2="22.5" y2="12"></line>
+                        <line class="dm-ray" x1="4.4" y1="4.4" x2="6.1" y2="6.1"></line>
+                        <line class="dm-ray" x1="17.9" y1="17.9" x2="19.6" y2="19.6"></line>
+                        <line class="dm-ray" x1="4.4" y1="19.6" x2="6.1" y2="17.9"></line>
+                        <line class="dm-ray" x1="17.9" y1="6.1" x2="19.6" y2="4.4"></line>
+                    </g>
+                    <path class="dm-moon" d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"></path>
+                </svg>
+            </button>
             <h2>خدمة الشهيد كيرياكوس - لوحة التحكم</h2>
             <button class="btn-action btn-danger logout-side-btn" onclick="logoutSystem()">تسجيل الخروج</button>
         </header>
@@ -159,6 +211,7 @@
                         <button class="btn-action btn-export" onclick="exportDatabaseExcel()">تصدير Excel</button>
                     </div>
                 </div>
+                <div id="databaseFilterChips" class="filter-chips-row"></div>
                 <div class="table-responsive">
                     <table>
                         <thead>
