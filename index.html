@@ -7,6 +7,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Cairo:wght@400;600;700&family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="favicon.png">
 </head>
@@ -26,6 +28,26 @@
             <span class="loader-dots"><i></i><i></i><i></i></span>
         </div>
     </div>
+    <!-- 
+        ضمان مستقل تمامًا عن سكريبت Firebase: لو أي مشكلة منعت script.js
+        من الاشتغال (مثلاً فتح الملف مباشرة من الجهاز بدل رابط مستضاف،
+        أو تعطل الاتصال بـ Firebase)، شاشة التحميل هتختفي تلقائيًا
+        بعد 6 ثواني ومش هتفضل واقفة للأبد.
+    -->
+    <script>
+        function forceHideGoldenLoader() {
+            var loader = document.getElementById('goldenLoader');
+            if (loader && !loader.classList.contains('loader-hidden')) {
+                loader.classList.add('loader-hidden');
+            }
+        }
+        // ضمان زمني: يختفي بعد 6 ثواني كحد أقصى مهما حصل
+        setTimeout(forceHideGoldenLoader, 6000);
+        // لو حصل أي خطأ برمجي (مثلاً تعطل تحميل Firebase) يختفي فورًا
+        // بدل ما يستنى الـ 6 ثواني، عشان المستخدم مايحسش إن الموقع واقف
+        window.addEventListener('error', forceHideGoldenLoader);
+        window.addEventListener('unhandledrejection', forceHideGoldenLoader);
+    </script>
 
     <!-- ============ حاوية الإشعارات الذكية ============ -->
     <div id="toastContainer" class="toast-container"></div>
@@ -88,15 +110,7 @@
                 </div>
                 <div class="form-group">
                     <label>السنة الدراسية:</label>
-                    <select id="pubStudyYear">
-                        <option value="أولى إعدادي">أولى إعدادي</option>
-                        <option value="تانية إعدادي">تانية إعدادي</option>
-                        <option value="تالتة إعدادي">تالتة إعدادي</option>
-                        <option value="أولى ثانوي">أولى ثانوي</option>
-                        <option value="تانية ثانوي">تانية ثانوي</option>
-                        <option value="تالتة ثانوي">تالتة ثانوي</option>
-                        <option value="جامعي">جامعي</option>
-                    </select>
+                    <select id="pubStudyYear"></select>
                 </div>
                 <div class="form-group">
                     <label>أب الاعتراف:</label>
@@ -296,15 +310,7 @@
                 <h3>توزيع خدمات القراءات والمسبح</h3>
                 <div style="margin-top: 15px; margin-bottom: 20px;">
                     <label>اختر المرحلة الدراسية:</label>
-                    <select id="serviceYearFilter" onchange="renderServiceDeaconsList()" style="width: 250px;">
-                        <option value="أولى إعدادي">أولى إعدادي</option>
-                        <option value="تانية إعدادي">تانية إعدادي</option>
-                        <option value="تالتة إعدادي">تالتة إعدادي</option>
-                        <option value="أولى ثانوي">أولى ثانوي</option>
-                        <option value="تانية ثانوي">تانية ثانوي</option>
-                        <option value="تالتة ثانوي">تالتة ثانوي</option>
-                        <option value="جامعي">جامعي</option>
-                    </select>
+                    <select id="serviceYearFilter" onchange="renderServiceDeaconsList()" style="width: 250px;"></select>
                 </div>
                 <div class="table-responsive">
                     <table>
@@ -376,15 +382,7 @@
                 </div>
                 <div class="form-group">
                     <label>السنة الدراسية:</label>
-                    <select id="editStudyYear">
-                        <option value="أولى إعدادي">أولى إعدادي</option>
-                        <option value="تانية إعدادي">تانية إعدادي</option>
-                        <option value="تالتة إعدادي">تالتة إعدادي</option>
-                        <option value="أولى ثانوي">أولى ثانوي</option>
-                        <option value="تانية ثانوي">تانية ثانوي</option>
-                        <option value="تالتة ثانوي">تالتة ثانوي</option>
-                        <option value="جامعي">جامعي</option>
-                    </select>
+                    <select id="editStudyYear"></select>
                 </div>
                 <div class="form-group">
                     <label>أب الاعتراف:</label>
@@ -421,6 +419,6 @@
         </div>
     </div>
 
-    <script type="module" src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
